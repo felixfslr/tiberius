@@ -85,6 +85,30 @@ When the user wants to see a change before it goes live:
 
 If the Claude Code harness blocks a direct push to main with a "bypasses PR review" message, **don't create a branch and PR workaround** — the user wants it on main. Tell the user to run `! git push origin main` in their prompt (the `!` prefix runs it in their shell, outside Claude's permission system).
 
+### Supabase is a shared, cloud-only database
+
+All three developers' localhosts **and** Vercel production talk to the same Supabase project (`kelnokyzpbboyhpfbudu`). There is no local DB. Schema changes take effect instantly for everyone — you can't "stage" a schema change.
+
+Implications:
+
+- Destructive changes (drop column, rename, `DELETE FROM`) break teammates' running localhosts the moment they run. Announce destructive changes in the team chat first.
+- Test data lands in production-shared state. Use throwaway emails for seed users and clean up at demo time.
+- App code (pages, components, types) still flows code → git → Vercel as normal.
+
+### Schema changes must be committed as migrations
+
+Even though the DB applies changes instantly, **every schema change gets a checked-in SQL file** so the team can see what changed and why. This is the only record of schema history.
+
+Workflow for schema changes:
+
+1. Apply the change via the Supabase MCP (`execute_sql` for iteration, then `apply_migration` once it's right — or hand-write the SQL).
+2. Write the final SQL to `supabase/migrations/<YYYYMMDDHHMMSS>_<short_description>.sql`. Use UTC timestamp, snake_case description (e.g. `20260418093000_add_todos_table.sql`).
+3. Enable RLS on any new table in an exposed schema (`public`) and add policies in the same migration file. No exceptions — the publishable key is public, RLS is the only defense.
+4. Regenerate TypeScript types if the app code will use the new shape: ask Claude to run the MCP `generate_typescript_types` tool and write the output to `src/lib/supabase/database.types.ts`.
+5. Commit the migration file, types file, and any app code touching the new schema in one commit. Push.
+
+Reading existing schema: ask Claude to list tables / inspect columns via the Supabase MCP — don't guess.
+
 ### Env vars live in Vercel
 
 Production/Preview/Development env vars are set on Vercel (managed via `vercel env`). When a page 500s after deploy, check env vars there first. `.env.local` is local-only; never commit it.
