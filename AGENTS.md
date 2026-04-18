@@ -64,6 +64,16 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_wlXVnPxbq0tvG3YCphNOXA_vvBwW
 
 Both values are publishable/public and safe to put in docs. Then `npm install && npm run dev`.
 
+### Previewing locally before shipping
+
+When the user wants to see a change before it goes live:
+
+1. Start the dev server in the background: `npm run dev` (keep it running across turns; don't restart between edits).
+2. Tell the user the URL — usually http://localhost:3000, but Next falls back to 3001+ if the port is taken, so read the actual port from the dev server output.
+3. Edit files; Next.js hot-reloads in the browser automatically. No manual refresh needed.
+4. If the user wants to share a preview with someone else without shipping to prod: push to a branch (e.g. `preview/<topic>`) — Vercel auto-deploys each branch to its own URL.
+5. When the user says "ship it" / "push to main", commit and push.
+
 ### Shipping changes
 
 - **Default: commit and push straight to `main`.** Every push to `main` auto-deploys to Vercel production in ~1 min.
