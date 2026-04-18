@@ -45,8 +45,24 @@ function scanAndInject() {
     const toolbar = findComposeToolbar(body);
     if (!toolbar || alreadyInjected(toolbar)) continue;
     const btn = buildButton(handleClick, body);
-    toolbar.insertBefore(btn, toolbar.firstChild);
+    // If toolbar is a <tr>, wrap the button in its own <td> and place it
+    // right after the Send cell. Otherwise insert as a sibling before Send.
+    if (toolbar instanceof HTMLTableRowElement) {
+      const cell = document.createElement("td");
+      cell.className = "tiberius-cell";
+      cell.style.cssText = "padding: 0 4px; vertical-align: middle;";
+      cell.appendChild(btn);
+      const firstTd = toolbar.querySelector(":scope > td");
+      if (firstTd && firstTd.nextSibling) {
+        toolbar.insertBefore(cell, firstTd.nextSibling);
+      } else {
+        toolbar.appendChild(cell);
+      }
+    } else {
+      toolbar.insertBefore(btn, toolbar.firstChild);
+    }
     markInjected(toolbar);
+    console.debug("[tiberius] button injected", { toolbar });
   }
 }
 

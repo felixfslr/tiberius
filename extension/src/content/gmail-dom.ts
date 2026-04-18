@@ -91,25 +91,69 @@ export function getUserEmail(): string {
   return m2 ? m2[1].toLowerCase() : "";
 }
 
+/**
+ * Multi-locale aria-label prefixes for Gmail's Send button.
+ * Gmail localizes aria-label but keeps the prefix stable. If your locale
+ * is missing, add it here.
+ */
+const SEND_LABEL_PREFIXES = [
+  "Send", // EN
+  "Senden", // DE
+  "Envoyer", // FR
+  "Enviar", // ES / PT
+  "Invia", // IT
+  "Verzenden", // NL
+  "Wyślij", // PL
+  "Skicka", // SV
+  "Sende", // DA / NO
+  "Lähetä", // FI
+  "送信", // JA
+  "发送", // ZH-CN
+  "傳送", // ZH-TW
+  "전송", // KO
+  "Gönder", // TR
+  "Отправить", // RU
+  "שליחה", // HE
+  "إرسال", // AR
+];
+
+const SEND_BUTTON_SELECTOR = SEND_LABEL_PREFIXES.map(
+  (w) => `div[role="button"][aria-label^="${w}"]`,
+).join(", ");
+
 /** A compose/reply box element (the contenteditable message body). */
 export function findComposeBodies(root: ParentNode = document): HTMLElement[] {
+  // aria-multiline="true" is locale-agnostic and distinguishes body from subject.
+  // g_editable is a legacy Gmail marker, used as fallback.
   const sel =
-    'div[role="textbox"][contenteditable="true"][aria-label*="Message Body" i], ' +
+    'div[role="textbox"][contenteditable="true"][aria-multiline="true"], ' +
     'div[g_editable="true"][role="textbox"][contenteditable="true"]';
-  return Array.from(root.querySelectorAll<HTMLElement>(sel));
+  const bodies = Array.from(root.querySelectorAll<HTMLElement>(sel));
+  // If nothing matched (older Gmail), fall back to any editable textbox that
+  // sits inside a <tr> containing a Send button.
+  if (bodies.length === 0) {
+    const fallback = Array.from(
+      root.querySelectorAll<HTMLElement>('div[role="textbox"][contenteditable="true"]'),
+    );
+    return fallback.filter((el) => findComposeToolbar(el) !== null);
+  }
+  return bodies;
 }
 
-/** Given a compose body element, find its nearest toolbar (Send button cluster). */
+/**
+ * Returns the <tr> toolbar row that holds the Send button for a compose.
+ * We inject into this row (as a new <td>) rather than inside the Send cell,
+ * to avoid fighting Gmail's flex sizing.
+ */
 export function findComposeToolbar(composeBody: HTMLElement): HTMLElement | null {
-  // Walk up to the compose container. The Send button is inside it.
   let ancestor: HTMLElement | null = composeBody;
-  for (let i = 0; i < 12 && ancestor; i++, ancestor = ancestor.parentElement) {
-    const send = ancestor.querySelector<HTMLElement>(
-      'div[role="button"][aria-label*="Send" i][data-tooltip*="Send" i], ' +
-        'div[role="button"][aria-label^="Send" i]',
-    );
+  for (let i = 0; i < 20 && ancestor; i++, ancestor = ancestor.parentElement) {
+    const send = ancestor.querySelector<HTMLElement>(SEND_BUTTON_SELECTOR);
     if (send) {
-      return send.parentElement;
+      let r: HTMLElement | null = send;
+      while (r && r.tagName !== "TR") r = r.parentElement;
+      // Prefer the toolbar row; fall back to Send's parent div (legacy path).
+      return r ?? send.parentElement;
     }
   }
   return null;
@@ -117,7 +161,5 @@ export function findComposeToolbar(composeBody: HTMLElement): HTMLElement | null
 
 /** Find the Send button for a given toolbar (for positioning / enable-check). */
 export function findSendButton(toolbar: HTMLElement): HTMLElement | null {
-  return toolbar.querySelector<HTMLElement>(
-    'div[role="button"][aria-label*="Send" i]',
-  );
+  return toolbar.querySelector<HTMLElement>(SEND_BUTTON_SELECTOR);
 }
