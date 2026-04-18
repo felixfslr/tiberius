@@ -49,6 +49,27 @@ npm run lint    # eslint (currently broken, see below)
 - In Server Components always read the user with `supabase.auth.getUser()` (not `getSession()`) — `getUser()` validates the JWT.
 - Env vars required in every environment: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Missing → 500 on every page (the server client throws at construction).
 
+## Git flow (3-person hackathon)
+
+- Branch from main: `feat/...`, `fix/...`, `chore/...`, `docs/...`
+- Small PRs (≤200 LOC). One slice per PR.
+- Squash-merge. PR title = commit message.
+- `gh pr merge --squash --auto --delete-branch` lets CI gate the merge.
+- `git pull --rebase origin main` before pushing a branch.
+- Claim your work area verbally before starting (Slack/voice).
+- Env vars live in Vercel. `.env.local` is local-only (gitignored).
+
+### Direct pushes to main
+
+Allowed only for trivial, review-free changes:
+
+- Typo fixes in docs/comments
+- Small edits to `AGENTS.md` / `CLAUDE.md` / `README.md`
+- Config tweaks (e.g., `.gitignore`, `.claude/settings.json`)
+- Version bumps
+
+Everything else → PR. If unsure, open a PR.
+
 ## shadcn MCP server
 
 Pre-approved via `.mcp.json` + `.claude/settings.json`. Use it to list / view / add shadcn components instead of guessing APIs or reinventing primitives. When adding a new UI component, prefer `shadcn` registry over writing from scratch.
