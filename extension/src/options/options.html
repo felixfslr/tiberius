@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tiberius Reply — Options</title>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Tiberius Reply</h1>
+        <p class="sub">Configure your agent and behavior.</p>
+      </header>
+
+      <form id="settings-form">
+        <label>
+          <span>API base URL</span>
+          <input type="url" name="apiBaseUrl" required placeholder="https://tiberius-nu.vercel.app" />
+        </label>
+
+        <label>
+          <span>Agent ID</span>
+          <input type="text" name="agentId" required placeholder="uuid" autocomplete="off" />
+          <small>Copy from <code>/agents/&lt;id&gt;/api-keys</code> page.</small>
+        </label>
+
+        <label>
+          <span>API key</span>
+          <div class="secret-row">
+            <input type="password" name="apiKey" required placeholder="tib_..." autocomplete="off" />
+            <button type="button" id="toggle-key" class="ghost">show</button>
+          </div>
+        </label>
+
+        <fieldset>
+          <legend>When the agent produces a reply</legend>
+          <label class="radio">
+            <input type="radio" name="behavior" value="auto_insert" />
+            <span><strong>Insert directly</strong> — modal only if confidence is below threshold.</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="behavior" value="always_preview" />
+            <span><strong>Always preview</strong> — show modal every time.</span>
+          </label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="primary">Save</button>
+          <button type="button" id="test-btn">Test connection</button>
+          <span id="status" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="./options.ts"></script>
+  </body>
+</html>
