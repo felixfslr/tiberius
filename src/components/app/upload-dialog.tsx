@@ -21,16 +21,14 @@ export function UploadDialog({
   agentId: string;
   folderId?: string | null;
   folderName?: string;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          trigger ? (
-            <>{trigger}</>
-          ) : (
+          trigger ?? (
             <Button size="sm">
               <Upload className="mr-2 h-3.5 w-3.5" /> Upload files
             </Button>

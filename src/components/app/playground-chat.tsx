@@ -3,10 +3,10 @@
 import { useMemo, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle,
-  Check,
   Copy,
   Loader2,
   MessageCircle,
+  MessageSquareWarning,
   RefreshCw,
   Send,
   Sparkles,
@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { StatusPill } from "./status-pill";
 import { cn } from "@/lib/utils";
@@ -242,6 +250,7 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
             history[history.length - 1]!.role === "assistant" &&
             history[history.length - 1]!.meta ? (
               <DraftCard
+                agentId={agent.id}
                 reply={history[history.length - 1]!.meta!}
                 onRegenerate={onRegenerate}
                 onCopy={async () => {
@@ -409,16 +418,19 @@ function MessageBubble({ message, agent }: { message: Message; agent: Agent }) {
 }
 
 function DraftCard({
+  agentId,
   reply,
   onCopy,
   onRegenerate,
   onSend,
 }: {
+  agentId: string;
   reply: Reply;
   onCopy: () => void;
   onRegenerate: () => void;
   onSend: () => void;
 }) {
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   return (
     <Card className="overflow-hidden border-primary/40 bg-card p-0 shadow-md shadow-primary/10">
       <div className="flex items-center justify-between border-b border-border/60 bg-primary/5 px-4 py-2">
@@ -460,12 +472,114 @@ function DraftCard({
         <Button variant="ghost" size="sm" onClick={onRegenerate}>
           <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Regenerate
         </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setFeedbackOpen(true)}
+          disabled={!reply.reply_log_id}
+        >
+          <MessageSquareWarning className="mr-1.5 h-3.5 w-3.5" /> Feedback
+        </Button>
         <div className="flex-1" />
         <Button size="sm" onClick={onSend}>
           <Send className="mr-1.5 h-3.5 w-3.5" /> Send
         </Button>
       </div>
+      <FeedbackDialog
+        open={feedbackOpen}
+        onOpenChange={setFeedbackOpen}
+        agentId={agentId}
+        replyLogId={reply.reply_log_id}
+      />
     </Card>
+  );
+}
+
+function FeedbackDialog({
+  open,
+  onOpenChange,
+  agentId,
+  replyLogId,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  agentId: string;
+  replyLogId: string;
+}) {
+  const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    const body = text.trim();
+    if (body.length < 3) {
+      toast.error("Add a bit more detail — what went wrong?");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/v1/agents/${agentId}/feedback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply_log_id: replyLogId, feedback_text: body }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json?.error?.message ?? "Could not submit feedback");
+        return;
+      }
+      toast.success("Thanks — analyzing in the background.");
+      setText("");
+      onOpenChange(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>What's wrong with this reply?</DialogTitle>
+          <DialogDescription>
+            Be specific — the worker will analyze which knowledge chunk is
+            responsible and propose a fix for your review.
+          </DialogDescription>
+        </DialogHeader>
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={5}
+          placeholder='e.g. "It says office hours are 9–17, but we changed to 10–18 last month."'
+          disabled={submitting}
+          className="resize-none"
+          autoFocus
+        />
+        <DialogFooter>
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={submit}
+            disabled={submitting || text.trim().length < 3}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Submitting…
+              </>
+            ) : (
+              "Submit feedback"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
