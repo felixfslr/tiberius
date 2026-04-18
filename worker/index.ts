@@ -1,6 +1,15 @@
 // Env vars come from Node's native `--env-file=...` flag — see package.json
 // scripts and ecosystem.config.js. No dotenv dependency in the bundle.
 
+// Polyfill Promise.try (added in Node 22; unpdf/pdfjs calls it internally).
+// The Hetzner box runs Node 20. Without this, extract() throws a
+// synchronous TypeError that slips past the async handler and hangs the job.
+if (typeof (Promise as unknown as { try?: unknown }).try !== "function") {
+  (Promise as unknown as { try: (fn: (...a: unknown[]) => unknown, ...a: unknown[]) => Promise<unknown> }).try = function (fn, ...args) {
+    return new Promise((resolve) => resolve(fn(...args)));
+  };
+}
+
 import { consola } from "consola";
 import { createClient } from "@supabase/supabase-js";
 

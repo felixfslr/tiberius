@@ -14,6 +14,22 @@ type FileRow = {
   file_type: FileType;
 };
 
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 async function setStatus(
   sb: ReturnType<typeof createServiceClient>,
   file_id: string,
@@ -43,7 +59,11 @@ export async function processFile(file_id: string): Promise<{ chunks: number }> 
 
   try {
     await setStatus(sb, file.id, "extracting");
-    const { text, pageCount } = await extractFromStorage(file.storage_path, file.mime_type);
+    const { text, pageCount } = await withTimeout(
+      extractFromStorage(file.storage_path, file.mime_type),
+      120_000,
+      "extract",
+    );
     if (!text.trim()) throw new Error("Extracted text is empty");
 
     await setStatus(sb, file.id, "chunking", {
