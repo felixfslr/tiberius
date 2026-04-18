@@ -12,23 +12,28 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Inbox, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { FolderCard, NewFolderTile } from "./folder-card";
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { FolderCard, NewFolderTile, UnsortedCard } from "./folder-card";
 
 export type FolderRow = {
   id: string;
   name: string;
   file_count: number;
+  sub_count?: number;
 };
 
 export function FolderGrid({
   agentId,
+  parentId,
   folders,
   unsortedCount,
+  showUnsorted,
 }: {
   agentId: string;
+  parentId: string | null;
   folders: FolderRow[];
-  unsortedCount: number;
+  unsortedCount?: number;
+  showUnsorted?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -60,7 +65,7 @@ export function FolderGrid({
   function remove(id: string, name: string) {
     if (
       !confirm(
-        `Delete folder "${name}"? Files inside fall back to Unsorted (not deleted).`,
+        `Delete folder "${name}"? Nested subfolders are also deleted; files fall back to Unsorted.`,
       )
     )
       return;
@@ -78,14 +83,14 @@ export function FolderGrid({
     });
   }
 
+  const isEmpty = folders.length === 0 && !showUnsorted;
+
   return (
     <div className="grid grid-cols-2 gap-5 md:grid-cols-3 xl:grid-cols-4">
-      {unsortedCount > 0 ? (
-        <FolderCard
+      {showUnsorted && (unsortedCount ?? 0) > 0 && parentId === null ? (
+        <UnsortedCard
           href={`/agents/${agentId}/knowledge?folder=unsorted`}
-          name="Unsorted"
-          fileCount={unsortedCount}
-          variant="unsorted"
+          fileCount={unsortedCount ?? 0}
         />
       ) : null}
 
@@ -93,10 +98,10 @@ export function FolderGrid({
         editingId === f.id ? (
           <div
             key={f.id}
-            className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/40 bg-primary/5 p-5"
+            className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-primary/50 bg-primary/5 p-4 pb-5"
           >
             <div className="mx-auto flex h-32 items-center justify-center">
-              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/15 text-primary">
                 <Pencil className="h-7 w-7" />
               </div>
             </div>
@@ -121,6 +126,7 @@ export function FolderGrid({
             href={`/agents/${agentId}/knowledge?folder=${f.id}`}
             name={f.name}
             fileCount={f.file_count}
+            subCount={f.sub_count}
             onRename={() => {
               setEditName(f.name);
               setEditingId(f.id);
@@ -130,12 +136,13 @@ export function FolderGrid({
         ),
       )}
 
-      <NewFolderTile agentId={agentId} />
+      <NewFolderTile agentId={agentId} parentId={parentId} />
+
+      {isEmpty ? null : null}
     </div>
   );
 }
 
-// Compact chevron-back header used inside a folder
 export function FolderActionsMenu({
   agentId,
   folderId,
@@ -176,7 +183,7 @@ export function FolderActionsMenu({
   function remove() {
     if (
       !confirm(
-        `Delete folder "${folderName}"? Files inside fall back to Unsorted (not deleted).`,
+        `Delete folder "${folderName}"? Nested subfolders are also deleted; files fall back to Unsorted.`,
       )
     )
       return;
@@ -233,8 +240,4 @@ export function FolderActionsMenu({
       </DropdownMenuContent>
     </DropdownMenu>
   );
-}
-
-export function UnsortedIcon() {
-  return <Inbox className="h-5 w-5" />;
 }

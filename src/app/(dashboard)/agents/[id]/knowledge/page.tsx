@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Inbox } from "lucide-react";
+import { ArrowLeft, ChevronRight, Inbox } from "lucide-react";
 import { getAgent } from "@/lib/services/agents";
 import { listFiles } from "@/lib/services/files";
-import { getFolderCounts, listFolders } from "@/lib/services/folders";
+import {
+  getFolderCounts,
+  getFolderPath,
+  listFolders,
+} from "@/lib/services/folders";
 import { FileUploader } from "@/components/app/file-uploader";
 import { FilesLiveTable } from "@/components/app/files-live-table";
 import { FolderGrid, FolderActionsMenu } from "@/components/app/folder-grid";
@@ -26,12 +30,20 @@ export default async function KnowledgePage({
 
   const activeFolder = folder ?? null; // null = root grid view
 
-  // Root view: show folder grid
+  // -----------------------------------------------------------
+  // Root view
+  // -----------------------------------------------------------
   if (!activeFolder) {
-    const [folders, counts] = await Promise.all([
-      listFolders(id),
+    const [rootFolders, counts] = await Promise.all([
+      listFolders(id, null),
       getFolderCounts(id),
     ]);
+
+    // Best-effort sub_count by folder (one extra query, cheap at this scale)
+    const subCounts = await countSubfolders(
+      id,
+      rootFolders.map((f) => f.id),
+    );
 
     return (
       <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
@@ -41,44 +53,67 @@ export default async function KnowledgePage({
             { href: `/agents/${id}/knowledge`, label: agent.name },
           ]}
           title="Knowledge"
-          description="Organize docs, SOPs, glossaries, chat history and tone examples into folders. The agent retrieves across all folders at reply time."
+          description="Organize docs, SOPs, glossaries, chat history and tone examples into folders and subfolders. The agent retrieves across all folders at reply time."
         />
 
         <FolderGrid
           agentId={id}
-          folders={folders}
+          parentId={null}
+          folders={rootFolders.map((f) => ({
+            id: f.id,
+            name: f.name,
+            file_count: f.file_count,
+            sub_count: subCounts.get(f.id) ?? 0,
+          }))}
           unsortedCount={counts.unsorted}
+          showUnsorted
         />
-
-        <section className="mt-2">
-          <h2 className="mb-3 text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Quick upload
-          </h2>
-          <FileUploader agentId={id} folderId={null} />
-          <p className="mt-2 text-xs text-muted-foreground">
-            Files uploaded here land in{" "}
-            <span className="font-medium text-foreground">Unsorted</span>. Open
-            a folder to upload straight into it.
-          </p>
-        </section>
       </div>
     );
   }
 
-  // Inside-folder view
-  const [folders, counts, files] = await Promise.all([
-    listFolders(id),
-    getFolderCounts(id),
+  // -----------------------------------------------------------
+  // Unsorted view
+  // -----------------------------------------------------------
+  if (activeFolder === "unsorted") {
+    const files = await listFiles(id, "unsorted");
+    return (
+      <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
+        <InsideHeader
+          agentId={id}
+          agentName={agent.name}
+          path={[{ id: "unsorted", name: "Unsorted" }]}
+          actions={null}
+          icon={
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+              <Inbox className="h-5 w-5" />
+            </div>
+          }
+          summary={`${files.length} file${files.length === 1 ? "" : "s"} not in any folder`}
+        />
+
+        <FileUploader agentId={id} folderId={null} />
+
+        <FilesLiveTable
+          agentId={id}
+          initial={files}
+          folderFilter="unsorted"
+          folders={[]}
+        />
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------
+  // Inside a specific folder
+  // -----------------------------------------------------------
+  const [path, subfolders, files] = await Promise.all([
+    getFolderPath(activeFolder),
+    listFolders(id, activeFolder),
     listFiles(id, activeFolder),
   ]);
 
-  const isUnsorted = activeFolder === "unsorted";
-  const folderRecord = isUnsorted
-    ? null
-    : folders.find((f) => f.id === activeFolder);
-
-  if (!isUnsorted && !folderRecord) {
-    // Folder doesn't exist — bounce back
+  if (path.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
         <p className="text-sm text-muted-foreground">Folder not found.</p>
@@ -92,69 +127,160 @@ export default async function KnowledgePage({
     );
   }
 
-  const folderName = isUnsorted ? "Unsorted" : (folderRecord?.name ?? "Folder");
-  const uploadFolderId = isUnsorted ? null : activeFolder;
+  const current = path[path.length - 1]!;
+  const subCounts = await countSubfolders(
+    id,
+    subfolders.map((f) => f.id),
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-3">
-          <Link
-            href={`/agents/${id}/knowledge`}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" /> All folders
-          </Link>
-          <div className="flex items-center gap-3">
-            {isUnsorted ? (
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                <Inbox className="h-5 w-5" />
-              </div>
-            ) : (
-              <FolderBadge />
-            )}
-            <div>
-              <h1 className="text-3xl font-semibold tracking-tight">
-                {folderName}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {files.length === 0
-                  ? "Empty"
-                  : files.length === 1
-                    ? "1 file"
-                    : `${files.length} files`}
-                {" · "}
-                {agent.name}
-              </p>
-            </div>
-          </div>
-        </div>
-        {!isUnsorted && folderRecord ? (
+      <InsideHeader
+        agentId={id}
+        agentName={agent.name}
+        path={path.map((p) => ({ id: p.id, name: p.name }))}
+        actions={
           <FolderActionsMenu
             agentId={id}
-            folderId={folderRecord.id}
-            folderName={folderRecord.name}
+            folderId={current.id}
+            folderName={current.name}
           />
-        ) : null}
-      </div>
-
-      <FileUploader
-        agentId={id}
-        folderId={uploadFolderId}
-        folderName={isUnsorted ? undefined : folderName}
+        }
+        icon={<FolderBadge />}
+        summary={
+          [
+            subfolders.length > 0
+              ? `${subfolders.length} subfolder${subfolders.length === 1 ? "" : "s"}`
+              : null,
+            files.length > 0
+              ? `${files.length} file${files.length === 1 ? "" : "s"}`
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · ") || "Empty folder"
+        }
       />
 
-      <FilesLiveTable
+      <FolderGrid
         agentId={id}
-        initial={files}
-        folderFilter={activeFolder}
-        folders={folders.map((f) => ({ id: f.id, name: f.name }))}
+        parentId={current.id}
+        folders={subfolders.map((f) => ({
+          id: f.id,
+          name: f.name,
+          file_count: f.file_count,
+          sub_count: subCounts.get(f.id) ?? 0,
+        }))}
       />
 
-      <div className="text-xs text-muted-foreground">
-        Total: {counts.all} file{counts.all === 1 ? "" : "s"} across all folders
-        · {counts.unsorted} unsorted
+      <div className="space-y-4 pt-2">
+        <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+          Files
+        </h2>
+        <FileUploader
+          agentId={id}
+          folderId={current.id}
+          folderName={current.name}
+        />
+        <FilesLiveTable
+          agentId={id}
+          initial={files}
+          folderFilter={current.id}
+          folders={subfolders.map((f) => ({ id: f.id, name: f.name }))}
+        />
       </div>
+    </div>
+  );
+}
+
+async function countSubfolders(
+  agentId: string,
+  folderIds: string[],
+): Promise<Map<string, number>> {
+  if (folderIds.length === 0) return new Map();
+  const { createServiceClient } = await import("@/lib/supabase/service");
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("folders")
+    .select("parent_id")
+    .eq("agent_id", agentId)
+    .in("parent_id", folderIds);
+  if (error) return new Map();
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as { parent_id: string | null }[]) {
+    if (!row.parent_id) continue;
+    map.set(row.parent_id, (map.get(row.parent_id) ?? 0) + 1);
+  }
+  return map;
+}
+
+function InsideHeader({
+  agentId,
+  agentName,
+  path,
+  actions,
+  icon,
+  summary,
+}: {
+  agentId: string;
+  agentName: string;
+  path: { id: string; name: string }[];
+  actions: React.ReactNode;
+  icon: React.ReactNode;
+  summary: string;
+}) {
+  const current = path[path.length - 1]!;
+  return (
+    <div className="flex items-start justify-between gap-4">
+      <div className="min-w-0 space-y-3">
+        <nav className="flex flex-wrap items-center gap-1 text-xs font-medium text-muted-foreground">
+          <Link href="/agents" className="hover:text-foreground">
+            Agents
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link
+            href={`/agents/${agentId}/knowledge`}
+            className="hover:text-foreground"
+          >
+            {agentName}
+          </Link>
+          <ChevronRight className="h-3 w-3" />
+          <Link
+            href={`/agents/${agentId}/knowledge`}
+            className="hover:text-foreground"
+          >
+            Knowledge
+          </Link>
+          {path.map((p, i) => (
+            <span key={p.id} className="flex items-center gap-1">
+              <ChevronRight className="h-3 w-3" />
+              {i === path.length - 1 ? (
+                <span className="text-foreground">{p.name}</span>
+              ) : (
+                <Link
+                  href={
+                    p.id === "unsorted"
+                      ? `/agents/${agentId}/knowledge?folder=unsorted`
+                      : `/agents/${agentId}/knowledge?folder=${p.id}`
+                  }
+                  className="hover:text-foreground"
+                >
+                  {p.name}
+                </Link>
+              )}
+            </span>
+          ))}
+        </nav>
+        <div className="flex items-center gap-3">
+          {icon}
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {current.name}
+            </h1>
+            <p className="text-sm text-muted-foreground">{summary}</p>
+          </div>
+        </div>
+      </div>
+      {actions}
     </div>
   );
 }
