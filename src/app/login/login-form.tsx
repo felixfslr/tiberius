@@ -63,10 +63,12 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full shadow-lg">
       <CardHeader>
-        <CardTitle>Welcome</CardTitle>
-        <CardDescription>Log in or create an account.</CardDescription>
+        <CardTitle className="text-2xl">Welcome back</CardTitle>
+        <CardDescription>
+          Log in to your account or create a new one.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs

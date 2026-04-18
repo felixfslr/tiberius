@@ -17,7 +17,7 @@ export default async function DashboardLayout({
   const agents = await listAgents().catch(() => []);
 
   return (
-    <div className="flex min-h-svh">
+    <div className="flex min-h-svh bg-background">
       <Sidebar
         userEmail={user.email ?? null}
         agents={agents.map((a) => ({ id: a.id, name: a.name }))}

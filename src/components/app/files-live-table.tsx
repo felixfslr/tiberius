@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { RefreshCw, Trash2, FileText } from "lucide-react";
+import {
+  FolderInput,
+  MoreHorizontal,
+  RefreshCw,
+  Trash2,
+  FileText,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -13,6 +19,17 @@ import {
 } from "@/components/ui/table";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FileStatusBadge } from "./file-status-badge";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
@@ -21,6 +38,7 @@ import { useRouter } from "next/navigation";
 type FileRow = {
   id: string;
   agent_id: string;
+  folder_id: string | null;
   filename: string;
   file_type: string;
   status: string;
@@ -30,12 +48,18 @@ type FileRow = {
   processed_at: string | null;
 };
 
+type FolderOption = { id: string; name: string };
+
 export function FilesLiveTable({
   agentId,
   initial,
+  folderFilter = "all",
+  folders = [],
 }: {
   agentId: string;
   initial: FileRow[];
+  folderFilter?: "all" | "unsorted" | string;
+  folders?: FolderOption[];
 }) {
   const router = useRouter();
   const [rows, setRows] = useState<FileRow[]>(initial);
@@ -62,10 +86,16 @@ export function FilesLiveTable({
             setRows((r) => [payload.new as FileRow, ...r]);
           } else if (payload.eventType === "UPDATE") {
             setRows((r) =>
-              r.map((x) => (x.id === (payload.new as FileRow).id ? (payload.new as FileRow) : x)),
+              r.map((x) =>
+                x.id === (payload.new as FileRow).id
+                  ? (payload.new as FileRow)
+                  : x,
+              ),
             );
           } else if (payload.eventType === "DELETE") {
-            setRows((r) => r.filter((x) => x.id !== (payload.old as FileRow).id));
+            setRows((r) =>
+              r.filter((x) => x.id !== (payload.old as FileRow).id),
+            );
           }
         },
       )
@@ -74,6 +104,13 @@ export function FilesLiveTable({
       sb.removeChannel(channel);
     };
   }, [agentId]);
+
+  const filtered = useMemo(() => {
+    if (folderFilter === "all") return rows;
+    if (folderFilter === "unsorted")
+      return rows.filter((r) => r.folder_id === null);
+    return rows.filter((r) => r.folder_id === folderFilter);
+  }, [rows, folderFilter]);
 
   function onReprocess(fileId: string) {
     startTransition(async () => {
@@ -86,7 +123,10 @@ export function FilesLiveTable({
   }
 
   function onDelete(fileId: string, filename: string) {
-    if (!confirm(`Delete ${filename}? All chunks for this file will be removed.`)) return;
+    if (
+      !confirm(`Delete ${filename}? All chunks for this file will be removed.`)
+    )
+      return;
     startTransition(async () => {
       const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
         method: "DELETE",
@@ -98,16 +138,33 @@ export function FilesLiveTable({
     });
   }
 
-  if (rows.length === 0) {
+  function onMove(fileId: string, folderId: string | null) {
+    startTransition(async () => {
+      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folder_id: folderId }),
+      });
+      if (res.ok) {
+        toast.success("Moved");
+        router.refresh();
+      } else toast.error("Move failed");
+    });
+  }
+
+  if (filtered.length === 0) {
     return (
-      <Card className="p-6 text-sm text-muted-foreground">
-        No files yet. Upload something above to feed the agent.
+      <Card className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground shadow-sm">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
+          <FileText className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <div>No files here yet. Upload something to feed the agent.</div>
       </Card>
     );
   }
 
   return (
-    <Card>
+    <Card className="overflow-hidden shadow-sm">
       <Table>
         <TableHeader>
           <TableRow>
@@ -115,12 +172,12 @@ export function FilesLiveTable({
             <TableHead>Type</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Uploaded</TableHead>
-            <TableHead className="w-28 text-right" />
+            <TableHead className="w-12 text-right" />
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r) => (
-            <TableRow key={r.id}>
+          {filtered.map((r) => (
+            <TableRow key={r.id} className="group">
               <TableCell>
                 <Link
                   href={`/agents/${agentId}/knowledge/files/${r.id}`}
@@ -130,7 +187,7 @@ export function FilesLiveTable({
                   {r.filename}
                 </Link>
                 {r.error ? (
-                  <div className="mt-0.5 text-xs text-red-600 dark:text-red-400">
+                  <div className="mt-0.5 text-xs text-destructive">
                     {r.error}
                   </div>
                 ) : null}
@@ -145,24 +202,54 @@ export function FilesLiveTable({
                 {new Date(r.uploaded_at).toLocaleString()}
               </TableCell>
               <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onReprocess(r.id)}
-                  disabled={pending}
-                  title="Reprocess"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(r.id, r.filename)}
-                  disabled={pending}
-                  title="Delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button variant="ghost" size="icon" disabled={pending} />
+                    }
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Actions</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <FolderInput className="mr-2 h-4 w-4" /> Move to
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent>
+                        <DropdownMenuLabel className="text-xs text-muted-foreground">
+                          Move to folder
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem
+                          onSelect={() => onMove(r.id, null)}
+                          disabled={r.folder_id === null}
+                        >
+                          Unsorted
+                        </DropdownMenuItem>
+                        {folders.length > 0 ? <DropdownMenuSeparator /> : null}
+                        {folders.map((f) => (
+                          <DropdownMenuItem
+                            key={f.id}
+                            onSelect={() => onMove(r.id, f.id)}
+                            disabled={r.folder_id === f.id}
+                          >
+                            {f.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuItem onSelect={() => onReprocess(r.id)}>
+                      <RefreshCw className="mr-2 h-4 w-4" /> Reprocess
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={() => onDelete(r.id, r.filename)}
+                      variant="destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           ))}

@@ -5,6 +5,7 @@ import type { FileType } from "@/lib/schemas/file";
 export type FileRecord = {
   id: string;
   agent_id: string;
+  folder_id: string | null;
   filename: string;
   storage_path: string;
   mime_type: string | null;
@@ -17,25 +18,56 @@ export type FileRecord = {
   processed_at: string | null;
 };
 
-function storagePath(agent_id: string, file_id: string, filename: string): string {
+export type FolderFilter = "all" | "unsorted" | string;
+
+function storagePath(
+  agent_id: string,
+  file_id: string,
+  filename: string,
+): string {
   const ext = filename.match(/\.[^.]+$/)?.[0] ?? "";
   return `${agent_id}/${file_id}${ext}`;
 }
 
-export async function listFiles(agent_id: string): Promise<FileRecord[]> {
+export async function listFiles(
+  agent_id: string,
+  folder?: FolderFilter,
+): Promise<FileRecord[]> {
   const sb = createServiceClient();
-  const { data, error } = await sb
+  let q = sb
     .from("files")
     .select("*")
     .eq("agent_id", agent_id)
     .order("uploaded_at", { ascending: false });
+  if (folder === "unsorted") {
+    q = q.is("folder_id", null);
+  } else if (folder && folder !== "all") {
+    q = q.eq("folder_id", folder);
+  }
+  const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []) as FileRecord[];
 }
 
+export async function moveFile(
+  file_id: string,
+  folder_id: string | null,
+): Promise<void> {
+  const sb = createServiceClient();
+  const { error } = await sb
+    .from("files")
+    .update({ folder_id })
+    .eq("id", file_id);
+  if (error) throw new Error(error.message);
+}
+
 export async function getFile(id: string): Promise<FileRecord | null> {
   const sb = createServiceClient();
-  const { data, error } = await sb.from("files").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await sb
+    .from("files")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return (data ?? null) as FileRecord | null;
 }
@@ -46,6 +78,7 @@ export async function uploadFile(
   mime: string | null,
   bytes: Buffer | Uint8Array,
   file_type: FileType,
+  folder_id: string | null = null,
 ): Promise<FileRecord> {
   const sb = createServiceClient();
   // Reserve the row with `status=uploading` so the worker's
@@ -54,6 +87,7 @@ export async function uploadFile(
     .from("files")
     .insert({
       agent_id,
+      folder_id,
       filename,
       mime_type: mime,
       size_bytes: bytes.byteLength,
@@ -68,7 +102,10 @@ export async function uploadFile(
   const path = storagePath(agent_id, placeholder.id, filename);
   const { error: upErr } = await sb.storage
     .from("knowledge")
-    .upload(path, bytes, { contentType: mime ?? "application/octet-stream", upsert: true });
+    .upload(path, bytes, {
+      contentType: mime ?? "application/octet-stream",
+      upsert: true,
+    });
   if (upErr) {
     await sb.from("files").delete().eq("id", placeholder.id);
     throw new Error(`Storage upload failed: ${upErr.message}`);
@@ -104,6 +141,7 @@ export async function createSignedUpload(
   mime: string | null,
   size_bytes: number,
   file_type: FileType,
+  folder_id: string | null = null,
 ): Promise<{
   file_id: string;
   storage_path: string;
@@ -115,6 +153,7 @@ export async function createSignedUpload(
     .from("files")
     .insert({
       agent_id,
+      folder_id,
       filename,
       mime_type: mime,
       size_bytes,
@@ -190,10 +229,18 @@ export async function uploadText(
   filename: string,
   content: string,
   file_type: FileType,
+  folder_id: string | null = null,
 ): Promise<FileRecord> {
   const buf = Buffer.from(content, "utf-8");
   const safeFilename = filename.endsWith(".txt") ? filename : `${filename}.txt`;
-  return uploadFile(agent_id, safeFilename, "text/plain", buf, file_type);
+  return uploadFile(
+    agent_id,
+    safeFilename,
+    "text/plain",
+    buf,
+    file_type,
+    folder_id,
+  );
 }
 
 export async function deleteFile(id: string): Promise<void> {
@@ -201,7 +248,10 @@ export async function deleteFile(id: string): Promise<void> {
   const file = await getFile(id);
   if (!file) return;
   if (file.storage_path && file.storage_path !== "pending") {
-    await sb.storage.from("knowledge").remove([file.storage_path]).catch(() => void 0);
+    await sb.storage
+      .from("knowledge")
+      .remove([file.storage_path])
+      .catch(() => void 0);
   }
   const { error } = await sb.from("files").delete().eq("id", id);
   if (error) throw new Error(error.message);
@@ -210,7 +260,10 @@ export async function deleteFile(id: string): Promise<void> {
 /** Re-run the pipeline for a file (e.g., user edited the raw text, or a failure happened). */
 export async function reprocessFile(id: string): Promise<void> {
   const sb = createServiceClient();
-  const { error } = await sb.from("files").update({ status: "pending", error: null }).eq("id", id);
+  const { error } = await sb
+    .from("files")
+    .update({ status: "pending", error: null })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   await enqueueProcessFile(id);
 }

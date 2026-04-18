@@ -1,7 +1,15 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import { Bot, Loader2, Send, User2, Wrench, AlertTriangle, Trash2 } from "lucide-react";
+import {
+  Bot,
+  Loader2,
+  Send,
+  User2,
+  Wrench,
+  AlertTriangle,
+  Trash2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -61,7 +69,10 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
     if (!trigger) return;
     setError(null);
     setInput("");
-    const nextHistory: Message[] = [...history, { role: "user", content: trigger }];
+    const nextHistory: Message[] = [
+      ...history,
+      { role: "user", content: trigger },
+    ];
     setHistory(nextHistory);
 
     startTransition(async () => {
@@ -91,7 +102,9 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
           meta: reply,
         },
       ]);
-      requestAnimationFrame(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }));
+      requestAnimationFrame(() =>
+        chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+      );
     });
   }
 
@@ -112,7 +125,12 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
               Stage inference + retrieval + grounded draft
             </span>
           </div>
-          <Button variant="ghost" size="sm" onClick={reset} disabled={history.length === 0}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={reset}
+            disabled={history.length === 0}
+          >
             <Trash2 className="mr-2 h-4 w-4" /> Reset
           </Button>
         </div>
@@ -183,19 +201,38 @@ function MessageBubble({ message }: { message: Message }) {
   const isAssistant = message.role === "assistant";
   const meta = message.meta;
   return (
-    <div className={cn("flex gap-3", isAssistant ? "flex-row" : "flex-row-reverse")}>
+    <div
+      className={cn(
+        "flex gap-3",
+        isAssistant ? "flex-row" : "flex-row-reverse",
+      )}
+    >
       <div
         className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs",
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs shadow-sm",
           isAssistant
-            ? "bg-sidebar-primary text-sidebar-primary-foreground"
+            ? "bg-gradient-to-br from-primary to-primary/70 text-primary-foreground"
             : "bg-muted text-muted-foreground",
         )}
       >
-        {isAssistant ? <Bot className="h-4 w-4" /> : <User2 className="h-4 w-4" />}
+        {isAssistant ? (
+          <Bot className="h-4 w-4" />
+        ) : (
+          <User2 className="h-4 w-4" />
+        )}
       </div>
-      <div className={cn("flex max-w-[80%] flex-col gap-2", isAssistant ? "" : "items-end")}>
-        <Card className={cn("px-3.5 py-2 text-sm")}>
+      <div
+        className={cn(
+          "flex max-w-[80%] flex-col gap-2",
+          isAssistant ? "" : "items-end",
+        )}
+      >
+        <Card
+          className={cn(
+            "px-4 py-2.5 text-sm shadow-sm",
+            !isAssistant && "bg-primary text-primary-foreground",
+          )}
+        >
           <div className="whitespace-pre-wrap">{message.content}</div>
           {meta ? (
             <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t pt-2 text-xs text-muted-foreground">
@@ -234,7 +271,11 @@ function MessageBubble({ message }: { message: Message }) {
 function ConfidenceBar({ label, value }: { label: string; value: number }) {
   const pct = Math.round(value * 100);
   const color =
-    value >= 0.7 ? "bg-emerald-500" : value >= 0.5 ? "bg-amber-500" : "bg-red-500";
+    value >= 0.7
+      ? "bg-emerald-500"
+      : value >= 0.5
+        ? "bg-amber-500"
+        : "bg-red-500";
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between text-xs">
@@ -242,7 +283,10 @@ function ConfidenceBar({ label, value }: { label: string; value: number }) {
         <span className="font-mono">{pct}%</span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-        <div className={cn("h-full transition-all", color)} style={{ width: `${pct}%` }} />
+        <div
+          className={cn("h-full transition-all", color)}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
@@ -250,7 +294,10 @@ function ConfidenceBar({ label, value }: { label: string; value: number }) {
 
 function DebugPanel({ reply }: { reply: Reply }) {
   return (
-    <Tabs defaultValue="retrieved" className="flex flex-1 flex-col gap-2 overflow-hidden">
+    <Tabs
+      defaultValue="retrieved"
+      className="flex flex-1 flex-col gap-2 overflow-hidden"
+    >
       <div className="border-b px-4 pt-4">
         <TabsList className="w-full">
           <TabsTrigger value="retrieved" className="flex-1">
@@ -268,16 +315,22 @@ function DebugPanel({ reply }: { reply: Reply }) {
         </TabsList>
       </div>
 
-      <TabsContent value="retrieved" className="flex-1 overflow-y-auto px-4 pb-4">
+      <TabsContent
+        value="retrieved"
+        className="flex-1 overflow-y-auto px-4 pb-4"
+      >
         <div className="mb-2 text-xs text-muted-foreground">
-          {reply.retrieved_chunks.length} chunks reranked. Lower = less relevant.
+          {reply.retrieved_chunks.length} chunks reranked. Lower = less
+          relevant.
         </div>
         <div className="flex flex-col gap-2">
           {reply.retrieved_chunks.map((c, i) => (
             <Card key={c.id} className="p-3">
               <div className="mb-1 flex items-center justify-between text-xs">
                 <div className="flex items-center gap-1">
-                  <span className="font-mono text-muted-foreground">#{i + 1}</span>
+                  <span className="font-mono text-muted-foreground">
+                    #{i + 1}
+                  </span>
                   <Badge variant="secondary" className="text-[10px]">
                     {c.content_type}
                   </Badge>
@@ -297,16 +350,27 @@ function DebugPanel({ reply }: { reply: Reply }) {
         </div>
       </TabsContent>
 
-      <TabsContent value="confidence" className="flex-1 overflow-y-auto px-4 pb-4">
+      <TabsContent
+        value="confidence"
+        className="flex-1 overflow-y-auto px-4 pb-4"
+      >
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between">
             <span className="text-sm font-medium">Overall</span>
-            <span className="font-mono text-lg">{reply.confidence.toFixed(2)}</span>
+            <span className="font-mono text-lg">
+              {reply.confidence.toFixed(2)}
+            </span>
           </div>
           <Separator className="my-2" />
           <div className="flex flex-col gap-3 pt-2">
-            <ConfidenceBar label="retrieval (25%)" value={reply.confidence_breakdown.retrieval} />
-            <ConfidenceBar label="intent (20%)" value={reply.confidence_breakdown.intent} />
+            <ConfidenceBar
+              label="retrieval (25%)"
+              value={reply.confidence_breakdown.retrieval}
+            />
+            <ConfidenceBar
+              label="intent (20%)"
+              value={reply.confidence_breakdown.intent}
+            />
             <ConfidenceBar
               label="groundedness (40%)"
               value={reply.confidence_breakdown.groundedness}
@@ -319,9 +383,14 @@ function DebugPanel({ reply }: { reply: Reply }) {
           {reply.below_threshold ? (
             <div className="mt-4 rounded-md border border-red-500/40 bg-red-500/10 p-3 text-xs text-red-700 dark:text-red-400">
               Below agent threshold — tool forced to{" "}
-              <code className="rounded bg-background px-1">flag_for_review</code>.
+              <code className="rounded bg-background px-1">
+                flag_for_review
+              </code>
+              .
               {reply.tool_args?.review_reason ? (
-                <div className="mt-1">{String(reply.tool_args.review_reason)}</div>
+                <div className="mt-1">
+                  {String(reply.tool_args.review_reason)}
+                </div>
               ) : null}
             </div>
           ) : null}
@@ -336,7 +405,10 @@ function DebugPanel({ reply }: { reply: Reply }) {
         </Card>
       </TabsContent>
 
-      <TabsContent value="reasoning" className="flex-1 overflow-y-auto px-4 pb-4">
+      <TabsContent
+        value="reasoning"
+        className="flex-1 overflow-y-auto px-4 pb-4"
+      >
         <Card className="p-4">
           <div className="mb-3">
             <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -362,7 +434,10 @@ function DebugPanel({ reply }: { reply: Reply }) {
               Detected
             </div>
             <p className="mt-1 text-xs">
-              stage <code className="rounded bg-muted px-1">{reply.detected_stage}</code>{" "}
+              stage{" "}
+              <code className="rounded bg-muted px-1">
+                {reply.detected_stage}
+              </code>{" "}
               · intents{" "}
               <code className="rounded bg-muted px-1">
                 {reply.detected_intents.join(", ")}

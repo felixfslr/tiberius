@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
 const FILE_TYPES = [
   { value: "product_doc", label: "Product doc" },
@@ -29,16 +30,22 @@ const FILE_TYPES = [
   { value: "convo_snippet", label: "Conversation snippet" },
 ] as const;
 
-export function FileUploader({ agentId }: { agentId: string }) {
+export function FileUploader({
+  agentId,
+  folderId = null,
+  folderName,
+}: {
+  agentId: string;
+  folderId?: string | null;
+  folderName?: string;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [dragging, setDragging] = useState(false);
 
-  // File upload
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [fileType, setFileType] = useState<string>("product_doc");
 
-  // Text paste
   const [textFilename, setTextFilename] = useState("notes.txt");
   const [textContent, setTextContent] = useState("");
   const [textType, setTextType] = useState<string>("product_doc");
@@ -49,7 +56,6 @@ export function FileUploader({ agentId }: { agentId: string }) {
       const supabase = createClient();
       for (const file of Array.from(files)) {
         try {
-          // Step 1: ask the server for a signed upload URL.
           const signRes = await fetch(`/api/v1/agents/${agentId}/files/sign`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -58,16 +64,18 @@ export function FileUploader({ agentId }: { agentId: string }) {
               size_bytes: file.size,
               mime_type: file.type || null,
               file_type: fileType,
+              folder_id: folderId,
             }),
           });
           const signBody = await signRes.json();
           if (!signRes.ok) {
-            toast.error(`${file.name}: ${signBody?.error?.message ?? "sign failed"}`);
+            toast.error(
+              `${file.name}: ${signBody?.error?.message ?? "sign failed"}`,
+            );
             continue;
           }
           const { file_id, storage_path, token } = signBody.data;
 
-          // Step 2: upload directly to Supabase Storage — bypasses Vercel.
           const { error: upErr } = await supabase.storage
             .from("knowledge")
             .uploadToSignedUrl(storage_path, token, file, {
@@ -79,14 +87,15 @@ export function FileUploader({ agentId }: { agentId: string }) {
             continue;
           }
 
-          // Step 3: finalize — flip status to 'pending' so the worker claims it.
           const commitRes = await fetch(
             `/api/v1/agents/${agentId}/files/${file_id}/commit`,
             { method: "POST" },
           );
           const commitBody = await commitRes.json();
           if (!commitRes.ok) {
-            toast.error(`${file.name}: ${commitBody?.error?.message ?? "commit failed"}`);
+            toast.error(
+              `${file.name}: ${commitBody?.error?.message ?? "commit failed"}`,
+            );
             continue;
           }
           toast.success(`Uploaded ${file.name}`);
@@ -109,6 +118,7 @@ export function FileUploader({ agentId }: { agentId: string }) {
           filename: textFilename,
           content: textContent,
           file_type: textType,
+          folder_id: folderId,
         }),
       });
       const body = await res.json();
@@ -122,8 +132,10 @@ export function FileUploader({ agentId }: { agentId: string }) {
     });
   }
 
+  const destLabel = folderName ? `into ${folderName}` : "";
+
   return (
-    <Card className="p-4">
+    <Card className="p-5 shadow-sm">
       <Tabs defaultValue="file" className="gap-4">
         <TabsList>
           <TabsTrigger value="file">
@@ -134,23 +146,21 @@ export function FileUploader({ agentId }: { agentId: string }) {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="file" className="flex flex-col gap-3">
-          <div className="flex gap-3">
-            <div className="flex flex-1 flex-col gap-2">
-              <Label>Type</Label>
-              <Select value={fileType} onValueChange={(v) => v && setFileType(v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {FILE_TYPES.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <TabsContent value="file" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label>Type</Label>
+            <Select value={fileType} onValueChange={(v) => v && setFileType(v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FILE_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div
             onDragOver={(e) => {
@@ -164,17 +174,21 @@ export function FileUploader({ agentId }: { agentId: string }) {
               onFilePick(e.dataTransfer.files);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={
-              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed p-8 text-sm transition " +
-              (dragging ? "border-foreground bg-muted" : "hover:bg-muted/50")
-            }
+            className={cn(
+              "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed p-10 text-sm transition",
+              dragging
+                ? "border-primary bg-primary/5"
+                : "border-border hover:border-primary/50 hover:bg-primary/5",
+            )}
           >
-            <Upload className="h-6 w-6 text-muted-foreground" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Upload className="h-5 w-5" />
+            </div>
             <div className="font-medium">
               {pending ? "Uploading…" : "Drop a file or click to browse"}
             </div>
             <div className="text-xs text-muted-foreground">
-              PDF, DOCX, TXT, MD, JSON · up to ~25 MB
+              PDF, DOCX, TXT, MD, JSON · up to ~25 MB {destLabel}
             </div>
             <input
               ref={fileInputRef}
@@ -188,7 +202,7 @@ export function FileUploader({ agentId }: { agentId: string }) {
         </TabsContent>
 
         <TabsContent value="text">
-          <form onSubmit={onPasteSubmit} className="flex flex-col gap-3">
+          <form onSubmit={onPasteSubmit} className="flex flex-col gap-4">
             <div className="grid grid-cols-[2fr_1fr] gap-3">
               <div className="flex flex-col gap-2">
                 <Label htmlFor="paste-filename">Filename</Label>
@@ -202,7 +216,10 @@ export function FileUploader({ agentId }: { agentId: string }) {
               </div>
               <div className="flex flex-col gap-2">
                 <Label>Type</Label>
-                <Select value={textType} onValueChange={(v) => v && setTextType(v)}>
+                <Select
+                  value={textType}
+                  onValueChange={(v) => v && setTextType(v)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -229,7 +246,9 @@ export function FileUploader({ agentId }: { agentId: string }) {
             </div>
             <div>
               <Button type="submit" disabled={pending || !textContent.trim()}>
-                {pending ? "Saving…" : "Save & process"}
+                {pending
+                  ? "Saving…"
+                  : `Save & process${destLabel ? " " + destLabel : ""}`}
               </Button>
             </div>
           </form>

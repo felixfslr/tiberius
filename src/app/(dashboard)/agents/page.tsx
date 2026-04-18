@@ -1,15 +1,7 @@
 import Link from "next/link";
-import { Bot } from "lucide-react";
+import { Bot, Sparkles } from "lucide-react";
 import { listAgents } from "@/lib/services/agents";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CreateAgentDialog } from "@/components/app/create-agent-dialog";
 import { AgentRowActions } from "@/components/app/agent-row-actions";
@@ -20,11 +12,11 @@ export default async function AgentsPage() {
   const agents = await listAgents();
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <header className="flex items-center justify-between">
+    <div className="flex flex-1 flex-col gap-8 p-8">
+      <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Agents</h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-3xl font-semibold tracking-tight">Agents</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Each agent has its own knowledge base, config, and API keys.
           </p>
         </div>
@@ -32,59 +24,72 @@ export default async function AgentsPage() {
       </header>
 
       {agents.length === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-5 w-5" /> No agents yet
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            Create your first agent to start drafting replies.
-          </CardContent>
+        <Card className="flex flex-col items-center gap-4 py-16 text-center shadow-sm">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-lg shadow-primary/20">
+            <Sparkles className="h-6 w-6" strokeWidth={2.25} />
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-lg font-semibold">No agents yet</h2>
+            <p className="text-sm text-muted-foreground">
+              Create your first agent to start drafting replies.
+            </p>
+          </div>
+          <CreateAgentDialog />
         </Card>
       ) : (
-        <Card>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Goal</TableHead>
-                <TableHead>Tone</TableHead>
-                <TableHead>Threshold</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="w-12 text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents.map((a) => (
-                <TableRow key={a.id}>
-                  <TableCell>
-                    <Link
-                      href={`/agents/${a.id}/knowledge`}
-                      className="font-medium hover:underline"
-                    >
-                      {a.name}
-                    </Link>
-                    {a.description ? (
-                      <div className="text-xs text-muted-foreground">{a.description}</div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{a.config.goal}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{a.config.tone}</TableCell>
-                  <TableCell className="text-sm">{a.config.confidence_threshold}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(a.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <AgentRowActions agentId={a.id} agentName={a.name} />
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {agents.map((a) => (
+            <Card
+              key={a.id}
+              className="group relative overflow-hidden p-5 shadow-sm transition hover:shadow-md"
+            >
+              <div className="absolute top-3 right-3 z-10">
+                <AgentRowActions agentId={a.id} agentName={a.name} />
+              </div>
+              <Link
+                href={`/agents/${a.id}/knowledge`}
+                className="flex flex-col gap-4"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-md shadow-primary/20">
+                  <Bot className="h-6 w-6" strokeWidth={2.25} />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold tracking-tight">
+                    {a.name}
+                  </h3>
+                  {a.description ? (
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {a.description}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant="secondary"
+                    className="bg-primary/10 text-primary"
+                  >
+                    {a.config.goal}
+                  </Badge>
+                  <Badge variant="outline" className="font-normal">
+                    {a.config.tone}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>threshold {a.config.confidence_threshold}</span>
+                  <span className="text-border">·</span>
+                  <span>
+                    created{" "}
+                    {new Date(a.created_at).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
+              </Link>
+            </Card>
+          ))}
+        </div>
       )}
     </div>
   );

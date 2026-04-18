@@ -1,4 +1,6 @@
+import { notFound } from "next/navigation";
 import { listKeys } from "@/lib/services/keys";
+import { getAgent } from "@/lib/services/agents";
 import {
   Table,
   TableBody,
@@ -10,6 +12,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { CreateKeyForm } from "@/components/app/create-key-form";
 import { RevokeKeyButton } from "@/components/app/revoke-key-button";
+import { PageHeader } from "@/components/app/page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -19,23 +22,23 @@ export default async function ApiKeysPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const agent = await getAgent(id);
+  if (!agent) notFound();
   const keys = await listKeys(id);
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold">API keys</h2>
-          <p className="text-sm text-muted-foreground">
-            Use a key with{" "}
-            <code className="rounded bg-muted px-1">Authorization: Bearer &lt;key&gt;</code>{" "}
-            to call this agent from n8n, Make, or any HTTP client.
-          </p>
-        </div>
-        <CreateKeyForm agentId={id} />
-      </div>
+    <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
+      <PageHeader
+        crumbs={[
+          { href: "/agents", label: "Agents" },
+          { href: `/agents/${id}/knowledge`, label: agent.name },
+        ]}
+        title="API keys"
+        description="Use a key with Authorization: Bearer <key> to call this agent from n8n, Make, or any HTTP client."
+        actions={<CreateKeyForm agentId={id} />}
+      />
 
-      <Card>
+      <Card className="overflow-hidden shadow-sm">
         <Table>
           <TableHeader>
             <TableRow>
@@ -49,7 +52,10 @@ export default async function ApiKeysPage({
           <TableBody>
             {keys.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={5}
+                  className="py-10 text-center text-sm text-muted-foreground"
+                >
                   No keys yet. Create one to start calling the API.
                 </TableCell>
               </TableRow>
@@ -58,7 +64,9 @@ export default async function ApiKeysPage({
                 <TableRow key={k.id}>
                   <TableCell className="font-medium">{k.name}</TableCell>
                   <TableCell>
-                    <code className="rounded bg-muted px-1 text-xs">{k.key_prefix}…</code>
+                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                      {k.key_prefix}…
+                    </code>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {k.last_used_at
@@ -69,7 +77,11 @@ export default async function ApiKeysPage({
                     {new Date(k.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <RevokeKeyButton agentId={id} keyId={k.id} keyName={k.name} />
+                    <RevokeKeyButton
+                      agentId={id}
+                      keyId={k.id}
+                      keyName={k.name}
+                    />
                   </TableCell>
                 </TableRow>
               ))

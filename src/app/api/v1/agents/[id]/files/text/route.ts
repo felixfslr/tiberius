@@ -15,7 +15,13 @@ export async function POST(req: NextRequest, { params }: Params) {
   if (auth instanceof Response) return auth;
   try {
     const body = FileTextCreateSchema.parse(await req.json());
-    const row = await uploadText(id, body.filename, body.content, body.file_type);
+    const row = await uploadText(
+      id,
+      body.filename,
+      body.content,
+      body.file_type,
+      body.folder_id ?? null,
+    );
     return ok(row, { status: 201 });
   } catch (e) {
     return handleUnknown(e);
