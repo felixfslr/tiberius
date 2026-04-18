@@ -62,6 +62,26 @@ export function KnowledgeTopStrip({
         </div>
       </Link>
 
+      <Link
+        href={`/agents/${agentId}/knowledge/graph-v2`}
+        className="group relative flex h-28 w-56 shrink-0 flex-col justify-between overflow-hidden rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">
+          <Network className="h-4 w-4" />
+        </div>
+        <span className="absolute top-3 right-3 rounded-full bg-primary/15 px-1.5 py-0.5 font-mono text-[9px] font-medium tracking-wide text-primary uppercase">
+          v2
+        </span>
+        <div className="space-y-0.5">
+          <div className="text-sm font-semibold tracking-tight">
+            Graph · multi-axis
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Stage · intent · entities
+          </div>
+        </div>
+      </Link>
+
       {files.map((f) => (
         <Link
           key={f.id}
