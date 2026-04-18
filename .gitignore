@@ -55,3 +55,7 @@ dist-worker/
 # chrome extension build + deps
 /extension/dist
 /extension/node_modules
+
+# mock data — per-machine, sensitive customer conversations + extracted JSONs
+/data/
+case.md

@@ -12,6 +12,7 @@ const serverSchema = publicSchema.extend({
   OPENAI_MODEL_MINI: z.string().default("gpt-5.4-mini"),
   OPENAI_MODEL_EMBED: z.string().default("text-embedding-3-small"),
   OPENAI_MODEL_WHISPER: z.string().default("whisper-1"),
+  OPENAI_MODEL_JUDGE: z.string().optional(),
   APP_ENV: z.enum(["development", "production", "test"]).default("development"),
 });
 

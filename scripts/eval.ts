@@ -1,36 +1,54 @@
 import { config as loadEnv } from "dotenv";
 loadEnv({ path: ".env.local" });
 
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { createClient } from "@supabase/supabase-js";
 import { createHash, randomBytes } from "node:crypto";
 import { generateObject } from "ai";
 import { z } from "zod";
-import { miniModel } from "@/lib/openai";
+import { miniModel, goldJudgeModel } from "@/lib/openai";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const BASE = process.env.SMOKE_BASE ?? "http://localhost:3007";
 const TEST_SET_PATH = process.env.EVAL_TEST_SET ?? "eval/test_set.json";
+const BASELINE_DIR = "eval/baselines";
 
 const sb = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
 
-type TestCase = {
-  id: string;
-  trigger_message: string;
-  history?: { role: "user" | "assistant"; content: string }[];
-  must_contain?: string[];
-  must_contain_any?: string[];
-  must_not_contain?: string[];
-  must_not_contain_any_of?: string[];
-  min_confidence?: number;
-  expected_intent?: string;
-  expected_tool_any?: string[];
-  notes?: string;
-};
+const TestCaseSchema = z.object({
+  id: z.string(),
+  trigger_message: z.string(),
+  history: z
+    .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+    .optional(),
+  must_contain: z.array(z.string()).optional(),
+  must_contain_any: z.array(z.string()).optional(),
+  must_not_contain: z.array(z.string()).optional(),
+  must_not_contain_any_of: z.array(z.string()).optional(),
+  min_confidence: z.number().optional(),
+  expected_intent: z.string().optional(),
+  expected_tool_any: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  // New optional fields (Phase B):
+  gold_reply: z.string().optional(),
+  expected_stage: z.string().optional(),
+  expected_outcome: z.string().optional(),
+  source_conversation: z.string().optional(),
+  synthetic: z.boolean().optional(),
+});
+type TestCase = z.infer<typeof TestCaseSchema>;
 
 const JudgeSchema = z.object({
   quality: z.number().min(0).max(5),
+  rationale: z.string().max(300),
+});
+
+const GoldJudgeSchema = z.object({
+  gold_alignment: z.number().min(0).max(5),
+  intent_match: z.number().min(0).max(5),
+  stage_appropriateness: z.number().min(0).max(5),
+  tone_match: z.number().min(0).max(5),
   rationale: z.string().max(300),
 });
 
@@ -52,14 +70,114 @@ async function judge(input: {
   }
 }
 
+async function judgeGoldAlignment(input: {
+  trigger: string;
+  history: { role: string; content: string }[];
+  draft: string;
+  gold: string;
+  expected_stage?: string;
+  expected_outcome?: string;
+}): Promise<z.infer<typeof GoldJudgeSchema>> {
+  try {
+    const histStr = input.history
+      .map((m) => `[${m.role}] ${m.content}`)
+      .join("\n");
+    const { object } = await generateObject({
+      model: goldJudgeModel(),
+      schema: GoldJudgeSchema,
+      system: `You compare a DRAFT sales reply against a GOLD human reply in the same conversational context. Rate 0-5 on four independent dimensions:
+
+- gold_alignment: overall closeness in intent, direction, and information content. 5 = DRAFT says what a good salesperson would say here AND resembles GOLD in substance. 3 = DRAFT is reasonable but meaningfully different. 0 = DRAFT misses the situation.
+- intent_match: does DRAFT pursue the same conversational move as GOLD (e.g., both pivot to a call / both decline politely / both answer a factual question)? NOT paraphrase similarity.
+- stage_appropriateness: given the expected_stage (cold / qualifying / scheduling / scheduled / post_call / stalled), is DRAFT pitched at the right point in the funnel?
+- tone_match: similar register, length, directness. Sales tone = warm-professional, concise, low pushiness.
+
+Return JSON only. Rationale ≤300 chars, cite the key difference or similarity.`,
+      prompt: `CONTEXT (history, oldest first):
+${histStr || "(none)"}
+
+INCOMING: ${input.trigger}
+
+GOLD (what the human actually wrote):
+${input.gold}
+
+DRAFT (what the model generated):
+${input.draft}
+
+expected_stage: ${input.expected_stage ?? "(unspecified)"}
+expected_outcome: ${input.expected_outcome ?? "(unspecified)"}`,
+    });
+    return object;
+  } catch {
+    return {
+      gold_alignment: 2.5,
+      intent_match: 2.5,
+      stage_appropriateness: 2.5,
+      tone_match: 2.5,
+      rationale: "gold judge failed; defaulted",
+    };
+  }
+}
+
 function hits(text: string, needles: string[]): string[] {
   const hay = text.toLowerCase();
   return needles.filter((n) => hay.includes(n.toLowerCase()));
 }
 
+type Result = {
+  id: string;
+  pass: boolean;
+  violations: string[];
+  quality: number;
+  confidence: number;
+  reply: string;
+  intent: string;
+  tool: string;
+  latency_ms: number;
+  gold_alignment?: number;
+  intent_match?: number;
+  stage_appropriateness?: number;
+  tone_match?: number;
+  synthetic?: boolean;
+  has_gold?: boolean;
+};
+
+function avg(xs: number[]): number {
+  return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN;
+}
+
+function fmt(n: number): string {
+  return isNaN(n) ? "—" : n.toFixed(2);
+}
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function groupReport(name: string, rows: Result[]): string {
+  if (!rows.length) return `${name}: (none)`;
+  const passed = rows.filter((r) => r.pass).length;
+  const avgQ = avg(rows.map((r) => r.quality));
+  const avgC = avg(rows.map((r) => r.confidence));
+  const golds = rows.filter((r) => r.has_gold);
+  const goldLine = golds.length
+    ? `  gold_alignment=${fmt(avg(golds.map((r) => r.gold_alignment!)))} intent=${fmt(
+        avg(golds.map((r) => r.intent_match!)),
+      )} stage=${fmt(avg(golds.map((r) => r.stage_appropriateness!)))} tone=${fmt(
+        avg(golds.map((r) => r.tone_match!)),
+      )}`
+    : "";
+  return `${name}: ${passed}/${rows.length} pass, quality=${fmt(avgQ)}, conf=${fmt(avgC)}${goldLine ? "\n" + goldLine : ""}`;
+}
+
 async function main() {
   const raw = await readFile(TEST_SET_PATH, "utf-8");
-  const cases = JSON.parse(raw) as TestCase[];
+  const parsed = z.array(TestCaseSchema).safeParse(JSON.parse(raw));
+  if (!parsed.success) {
+    console.error("test_set.json schema error:", parsed.error.issues);
+    process.exit(1);
+  }
+  const cases: TestCase[] = parsed.data;
 
   const { data: agent } = await sb
     .from("agents")
@@ -84,17 +202,7 @@ async function main() {
 
   console.log(`Evaluating ${cases.length} cases against ${agent.name}…\n`);
 
-  const results: Array<{
-    id: string;
-    pass: boolean;
-    violations: string[];
-    quality: number;
-    confidence: number;
-    reply: string;
-    intent: string;
-    tool: string;
-    latency_ms: number;
-  }> = [];
+  const results: Result[] = [];
 
   for (const tc of cases) {
     const t0 = Date.now();
@@ -120,6 +228,8 @@ async function main() {
         intent: "",
         tool: "",
         latency_ms: ms,
+        synthetic: tc.synthetic ?? false,
+        has_gold: !!tc.gold_reply,
       });
       continue;
     }
@@ -160,13 +270,29 @@ async function main() {
       notes: tc.notes ?? "",
     });
 
+    let gold: z.infer<typeof GoldJudgeSchema> | undefined;
+    if (tc.gold_reply) {
+      gold = await judgeGoldAlignment({
+        trigger: tc.trigger_message,
+        history: tc.history ?? [],
+        draft: r.reply_text,
+        gold: tc.gold_reply,
+        expected_stage: tc.expected_stage,
+        expected_outcome: tc.expected_outcome,
+      });
+    }
+
     const pass = violations.length === 0;
+    const goldLine = gold
+      ? ` gold=${gold.gold_alignment.toFixed(1)}(i=${gold.intent_match.toFixed(1)}/s=${gold.stage_appropriateness.toFixed(1)}/t=${gold.tone_match.toFixed(1)})`
+      : "";
     console.log(
-      `${pass ? "✓" : "✗"} ${tc.id}  conf=${r.confidence.toFixed(2)}  judge=${j.quality.toFixed(1)}  ${ms}ms`,
+      `${pass ? "✓" : "✗"} ${tc.id}  conf=${r.confidence.toFixed(2)}  judge=${j.quality.toFixed(1)}${goldLine}  ${ms}ms`,
     );
     console.log(`   "${r.reply_text.slice(0, 110).replace(/\n/g, " ")}…"`);
     if (!pass) console.log(`   violations: ${violations.join(" | ")}`);
     console.log(`   judge: ${j.rationale}`);
+    if (gold) console.log(`   gold:  ${gold.rationale}`);
 
     results.push({
       id: tc.id,
@@ -178,22 +304,65 @@ async function main() {
       intent: r.detected_intent,
       tool: r.suggested_tool,
       latency_ms: ms,
+      gold_alignment: gold?.gold_alignment,
+      intent_match: gold?.intent_match,
+      stage_appropriateness: gold?.stage_appropriateness,
+      tone_match: gold?.tone_match,
+      synthetic: tc.synthetic ?? false,
+      has_gold: !!tc.gold_reply,
     });
   }
 
   await sb.from("api_keys").delete().eq("id", key.id);
 
-  const total = results.length;
-  const passed = results.filter((r) => r.pass).length;
-  const avgQuality = results.reduce((a, b) => a + b.quality, 0) / total;
-  const avgConf = results.reduce((a, b) => a + b.confidence, 0) / total;
-  const avgMs = Math.round(results.reduce((a, b) => a + b.latency_ms, 0) / total);
+  // Aggregation by group
+  const syntheticRows = results.filter((r) => r.synthetic);
+  const ivyRealRows = results.filter((r) => r.has_gold);
+
+  const avgMs = Math.round(avg(results.map((r) => r.latency_ms)));
 
   console.log(`\n========================================`);
-  console.log(`Passed: ${passed}/${total}  (${Math.round((passed / total) * 100)}%)`);
-  console.log(`Avg judge quality: ${avgQuality.toFixed(2)} / 5.0`);
-  console.log(`Avg confidence:    ${avgConf.toFixed(2)}`);
-  console.log(`Avg latency:       ${avgMs}ms`);
+  console.log(groupReport("overall  ", results));
+  console.log(groupReport("synthetic", syntheticRows));
+  console.log(groupReport("ivy_real ", ivyRealRows));
+  console.log(`Avg latency: ${avgMs}ms`);
+
+  // Write baseline snapshot
+  await mkdir(BASELINE_DIR, { recursive: true });
+  const snapshotPath = `${BASELINE_DIR}/baseline-${today()}.json`;
+  const snapshot = {
+    run_at: new Date().toISOString(),
+    n_cases: results.length,
+    results,
+    aggregates: {
+      overall: {
+        n: results.length,
+        pass_rate: results.length ? results.filter((r) => r.pass).length / results.length : 0,
+        quality_avg: avg(results.map((r) => r.quality)),
+        confidence_avg: avg(results.map((r) => r.confidence)),
+      },
+      synthetic: {
+        n: syntheticRows.length,
+        pass_rate: syntheticRows.length
+          ? syntheticRows.filter((r) => r.pass).length / syntheticRows.length
+          : 0,
+        quality_avg: avg(syntheticRows.map((r) => r.quality)),
+      },
+      ivy_real: {
+        n: ivyRealRows.length,
+        pass_rate: ivyRealRows.length
+          ? ivyRealRows.filter((r) => r.pass).length / ivyRealRows.length
+          : 0,
+        quality_avg: avg(ivyRealRows.map((r) => r.quality)),
+        gold_alignment_avg: avg(ivyRealRows.map((r) => r.gold_alignment ?? NaN)),
+        intent_match_avg: avg(ivyRealRows.map((r) => r.intent_match ?? NaN)),
+        stage_appropriateness_avg: avg(ivyRealRows.map((r) => r.stage_appropriateness ?? NaN)),
+        tone_match_avg: avg(ivyRealRows.map((r) => r.tone_match ?? NaN)),
+      },
+    },
+  };
+  await writeFile(snapshotPath, JSON.stringify(snapshot, null, 2) + "\n");
+  console.log(`\nBaseline snapshot: ${snapshotPath}`);
 }
 
 main().catch((e) => {

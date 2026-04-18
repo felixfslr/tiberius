@@ -8,42 +8,221 @@
         "content": "Hi — Felix from Ivy. Saw you run sizeable USDC volume. Curious if faster fiat rails would help."
       }
     ],
-    "must_not_contain": ["0.15%", "0.25%", "2.2%", "bps"],
-    "must_contain_any": ["call", "calendly", "discovery", "walk through"],
+    "must_not_contain": [
+      "0.15%",
+      "0.25%",
+      "2.2%",
+      "bps"
+    ],
+    "must_contain_any": [
+      "call",
+      "calendly",
+      "discovery",
+      "walk through"
+    ],
     "min_confidence": 0.5,
     "expected_intent": "pricing",
-    "notes": "SOP: no pricing numbers before discovery. Must pivot to call."
+    "notes": "SOP: no pricing numbers before discovery. Must pivot to call.",
+    "synthetic": true
   },
   {
     "id": "competitor-objection",
     "trigger_message": "We already use BVNK — why would I switch?",
     "history": [],
-    "must_not_contain_any_of": ["BVNK is bad", "BVNK is slow", "competitor is inferior"],
-    "must_contain_any": ["faster", "direct", "crypto-native", "side-by-side", "compare"],
+    "must_not_contain_any_of": [
+      "BVNK is bad",
+      "BVNK is slow",
+      "competitor is inferior"
+    ],
+    "must_contain_any": [
+      "faster",
+      "direct",
+      "crypto-native",
+      "side-by-side",
+      "compare"
+    ],
     "min_confidence": 0.5,
     "expected_intent": "competitor",
-    "notes": "SOP: acknowledge, don't disparage, pivot to differentiators."
+    "notes": "SOP: acknowledge, don't disparage, pivot to differentiators.",
+    "synthetic": true
   },
   {
     "id": "scheduling-positive",
-    "trigger_message": "Sure, let's find time — do you have anything next week?",
+    "trigger_message": "Thanks for sharing the info in your previous email.\nDo you support Open Banking in GBP?\nAll the best,",
     "history": [
       {
         "role": "assistant",
-        "content": "Happy to walk you through — want to grab 20 min?"
+        "content": "Hi X,\nwould love to share how Kraken improved their payment & banking setup\nwith Ivy.\nDo you have 15 minutes to chat this or next week? My\ncalendar: https://meet.getivy.eu/ 30 min\nBest,\nFerdi\nP.S. Happy to chat on Telegram @ferdi_ivy"
+      },
+      {
+        "role": "user",
+        "content": "Hi Ferdinand,"
       }
     ],
-    "must_contain_any": ["calendly", "calendar", "book", "slot"],
+    "gold_reply": "We do! We support Faster Payments, as well as SEPA Instant.\nWould love to share more details over a quick call later this week.\nCopying in my calendar for easier\nscheduling:https://meet.getivy.eu/ 30 min",
+    "source_conversation": "convo_09",
+    "must_contain_any": [
+      "calendly",
+      "calendar",
+      "book",
+      "slot",
+      "meet.getivy"
+    ],
     "min_confidence": 0.6,
     "expected_intent": "scheduling",
     "notes": "Should attach Calendly URL and keep it short."
   },
   {
     "id": "hard-factual-unknown",
-    "trigger_message": "Do you support ISO 20022 native format on all your SEPA rails?",
-    "history": [],
+    "trigger_message": "What financial licenses do you have? - we have VASP lisc in India\nDo you see demand for EUR/GBP? - yes, also from MENA",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWe missed connecting at Consensus Hong Kong last week. Would love to\ncatch up online instead: https://meet.getivy.eu/ 30 min\nAs a reminder: I'm Ferdinand, founder/CEO at Ivy. We offer open banking\naggregation, high-quality IBANs, and stablecoin on/off-ramps.\nWe already serve 〜 40 % of the European mid-market, as well as bigger\ncustomers like Kraken, Bybit, and OKX.\nBest,\nFerdinand\nP.S. Text me on TG @ferdi_ivy."
+      },
+      {
+        "role": "user",
+        "content": "Hey Ferdinand, thanks, have scheduled for X"
+      },
+      {
+        "role": "assistant",
+        "content": "Looking forward to chatting!\nAlso, two quick questions before our call:\nWhat financial licenses do you have?\nDo you see demand for EUR/GBP?"
+      }
+    ],
+    "gold_reply": "Hi X,\nSadly, we're currently not able to support an Indian VASP. We can\nwork with European licenses, VARA licenses from UAE, and Canadian\nMSBs.",
+    "source_conversation": "convo_18",
     "min_confidence": 0,
-    "expected_tool_any": ["flag_for_review", "send_calendly_link"],
+    "expected_tool_any": [
+      "flag_for_review",
+      "send_calendly_link"
+    ],
     "notes": "Specific technical claim not in KB — model should either flag or route to call."
+  },
+  {
+    "id": "convo_01-turn1",
+    "trigger_message": "Ok thanks for the reply.\nwe are already in talks with Mollie but stopped because we ran into\nissues with our product requirements vs their possibilities in KYC. We\nwish for Seller as MOR but in that setup they cannot onboard private\nentity sellers only business. Regardless, we had in mind to start with an\nopen banking partner to enable payment initiation and real time\nconfirmation, even without split payments (we would invoice our services\nlater) and that is why I reached out to you. That is why I hoped that you\ncan offer open banking services to us even though we are not\nfin.licensee.\nBest regards",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nLooking forward to our call on March 23 rd!\nQuick question regarding this: what financial license(s)\ndo you have? Couldn't spot it on your website.\nBest,\nRuben"
+      },
+      {
+        "role": "user",
+        "content": "Hi Ruben,\nthanks for reaching out. We do not hold financial licenses as\nI marked in the contact sheet. This is why we need your\nservices as an emerging marketplace. Currently we operate\nas a classified ads site for rental with no transactions\nhappening on site. All the deposits and communication post\ndate agreement is taken off site between the customer and\nthe property owner. Our aim is to extend our portfolio,\nintroduce a hybrid offering, one for clients who wish just to\nadvertise for a fee (current model for the last 15 years), and\nthe other with live payments on site for agreed reservations\n(similarly to major booking companies).Where does Ivy\ncome in? We will be launching hosted IBAN to IBAN\npayments on our site and we would need API for payment\nconfirmation (possibly even for payment initiation - but it is\nnot a priority due to web banking being less practical and\nnot as used as mobile banking). As per my understanding,\nwe can ask for such services (anonymized payment\nconfirmation) from licensed bank data aggregators that can\ncollect confirmation for companies that aren't licensed to do\nso and it's not the core of their business.\nSorry if I misunderstood the use case and possibilities. I see\nyou have an integration with Mollie also, could it be that\nintegrating with Mollie is a prerequisite for such a\npartnership?\n\nBest regards"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi Ruben,\nthanks for replying. One last question, is there a way to implement\npay by bank with instant split using your partnership with Mollie?\nThank you"
+      },
+      {
+        "role": "assistant",
+        "content": "That should work, absolutely!\nFeel free to reach out to the Mollie team and onboard onto their\nplatform. Our pay by bank will be available via the Mollie platform."
+      }
+    ],
+    "gold_reply": "Hi X,\nWe unfortunately will not be able to serve you if you don't have\na financial license.",
+    "source_conversation": "convo_01",
+    "expected_stage": "qualifying",
+    "expected_outcome": "disqualify_politely",
+    "notes": "This is the key disqualification moment: the salesperson evaluates the use case, confirms a hard requirement (financial license), and politely ends the opportunity rather than continuing to engage."
+  },
+  {
+    "id": "convo_01-turn2",
+    "trigger_message": "Hi Ruben,\nthanks for reaching out. We do not hold financial licenses as\nI marked in the contact sheet. This is why we need your\nservices as an emerging marketplace. Currently we operate\nas a classified ads site for rental with no transactions\nhappening on site. All the deposits and communication post\ndate agreement is taken off site between the customer and\nthe property owner. Our aim is to extend our portfolio,\nintroduce a hybrid offering, one for clients who wish just to\nadvertise for a fee (current model for the last 15 years), and\nthe other with live payments on site for agreed reservations\n(similarly to major booking companies).Where does Ivy\ncome in? We will be launching hosted IBAN to IBAN\npayments on our site and we would need API for payment\nconfirmation (possibly even for payment initiation - but it is\nnot a priority due to web banking being less practical and\nnot as used as mobile banking). As per my understanding,\nwe can ask for such services (anonymized payment\nconfirmation) from licensed bank data aggregators that can\ncollect confirmation for companies that aren't licensed to do\nso and it's not the core of their business.\nSorry if I misunderstood the use case and possibilities. I see\nyou have an integration with Mollie also, could it be that\nintegrating with Mollie is a prerequisite for such a\npartnership?\n\nBest regards",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nLooking forward to our call on March 23 rd!\nQuick question regarding this: what financial license(s)\ndo you have? Couldn't spot it on your website.\nBest,\nRuben"
+      }
+    ],
+    "gold_reply": "That should work, absolutely!\nFeel free to reach out to the Mollie team and onboard onto their\nplatform. Our pay by bank will be available via the Mollie platform.",
+    "source_conversation": "convo_01",
+    "expected_stage": "scheduling",
+    "expected_outcome": "answer_factual",
+    "notes": "This is a non-trivial product/partnering answer to a feasibility question about pay by bank and split payments through Mollie, where the salesperson gives a concrete path forward instead of deflecting"
+  },
+  {
+    "id": "convo_17-turn1",
+    "trigger_message": "Hey Ferdinand,\n\n\nGreat to meet you, and yes, I'd love to chat! I'll book time on your calendar.\nTalk to you then.\nMy Best,\nX",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWe missed connecting at Consensus Hong Kong last week. Would love to\ncatch up online instead: https://meet.getivy.eu/ 30 min\n\n\nAs a reminder: I'm Ferdinand, founder/CEO at Ivy. We offer open banking\naggregation, high-quality IBANs, and stablecoin on/off-ramps.\nWe already serve **〜** 40 % of the European mid-market, as well as bigger\ncustomers like Kraken, Bybit, and OKX.\nBest,\nFerdinand\nP.S. Text me on TG @ferdi_ivy."
+      },
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWould love to share how we improved Kraken's payment & banking\nsetup.\nMy calendar: https://meet.getivy.eu/ 30 min\nBest,\nFerdi\nP.S. Happy to chat on Telegram @ferdi_ivy."
+      },
+      {
+        "role": "user",
+        "content": "Hi Ferdinand,\nCC-ing X here who leads our on/off ramp integration!"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi X,\nGood to meet you and appreciate your help, X.\nAs context: We're helping Kraken, OKX and ByBit with EUR/GBP virtual\naccounts, open banking payins/payouts, and instant on/off-ramps to\nUSDC.\nAttaching our one-pager with more details.\nHarry, is that something you would be interested in?\nBest,\nFerdi"
+      }
+    ],
+    "gold_reply": "Hi X,\nJust to clarify: We're helping Kraken, OKX, and ByBit with EUR/GBP\nvirtual accounts, open banking payins/payouts, and instant on/off-\nramps.\nI took a second look at your website and I'm not sure if we can really help\nyou with our offering.\nDoes it still make sense to connect?\nBest,\nFerdi",
+    "source_conversation": "convo_17",
+    "expected_stage": "stalled",
+    "expected_outcome": "disqualify_politely",
+    "notes": "The salesperson does a judgment call after re-checking the prospect’s website and explicitly questions fit. This is a non-trivial qualification/disqualification moment because it shifts from selling/p"
+  },
+  {
+    "id": "convo_17-turn2",
+    "trigger_message": "Hi Ferdinand,\nTo clarify, weʼre not evaluating Ivy as a direct on/off-ramp provider for the\nX.\nGiven your existing integrations with Kraken, OKX, and ByBit for EUR/GBP\nvirtual accounts and open banking payins/payouts, we were more\ninterested in exploring whether X chain could be supported within the\non/off-ramp and stablecoin flows you already power for those partners.\nWe are working with large payments enterprises that need ramps to move\nUSDC on X. Here's our list of current ramp providers. Would it make sense\nto connect briefly to explore whether enabling X as a supported chain\nwithin Ivyʼs exchange-facing stack could unlock additional opportunities?",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWe missed connecting at Consensus Hong Kong last week. Would love to\ncatch up online instead: https://meet.getivy.eu/ 30 min\n\n\nAs a reminder: I'm Ferdinand, founder/CEO at Ivy. We offer open banking\naggregation, high-quality IBANs, and stablecoin on/off-ramps.\nWe already serve **〜** 40 % of the European mid-market, as well as bigger\ncustomers like Kraken, Bybit, and OKX.\nBest,\nFerdinand\nP.S. Text me on TG @ferdi_ivy."
+      },
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWould love to share how we improved Kraken's payment & banking\nsetup.\nMy calendar: https://meet.getivy.eu/ 30 min\nBest,\nFerdi\nP.S. Happy to chat on Telegram @ferdi_ivy."
+      },
+      {
+        "role": "user",
+        "content": "Hi Ferdinand,\nCC-ing X here who leads our on/off ramp integration!"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi X,\nGood to meet you and appreciate your help, X.\nAs context: We're helping Kraken, OKX and ByBit with EUR/GBP virtual\naccounts, open banking payins/payouts, and instant on/off-ramps to\nUSDC.\nAttaching our one-pager with more details.\nHarry, is that something you would be interested in?\nBest,\nFerdi"
+      },
+      {
+        "role": "user",
+        "content": "Hey Ferdinand,\n\n\nGreat to meet you, and yes, I'd love to chat! I'll book time on your calendar.\nTalk to you then.\nMy Best,\nX"
+      },
+      {
+        "role": "assistant",
+        "content": "Hi X,\nJust to clarify: We're helping Kraken, OKX, and ByBit with EUR/GBP\nvirtual accounts, open banking payins/payouts, and instant on/off-\nramps.\nI took a second look at your website and I'm not sure if we can really help\nyou with our offering.\nDoes it still make sense to connect?\nBest,\nFerdi"
+      }
+    ],
+    "gold_reply": "Hi X,\nLet's cancel the call for now.\nI'll loop back once this becomes interesting.\nBest,\nFerdi",
+    "source_conversation": "convo_17",
+    "expected_stage": "stalled",
+    "expected_outcome": "disqualify_politely",
+    "notes": "After the lead clarifies the actual use case, the salesperson decides to cancel the call rather than force a mismatched meeting. This is a clear fit-mismatch handling moment and a polite disengagement"
+  },
+  {
+    "id": "convo_18-turn2",
+    "trigger_message": "What financial licenses do you have? - we have VASP lisc in India\nDo you see demand for EUR/GBP? - yes, also from MENA",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi X,\nWe missed connecting at Consensus Hong Kong last week. Would love to\ncatch up online instead: https://meet.getivy.eu/ 30 min\nAs a reminder: I'm Ferdinand, founder/CEO at Ivy. We offer open banking\naggregation, high-quality IBANs, and stablecoin on/off-ramps.\nWe already serve 〜 40 % of the European mid-market, as well as bigger\ncustomers like Kraken, Bybit, and OKX.\nBest,\nFerdinand\nP.S. Text me on TG @ferdi_ivy."
+      },
+      {
+        "role": "user",
+        "content": "Hey Ferdinand, thanks, have scheduled for X"
+      },
+      {
+        "role": "assistant",
+        "content": "Looking forward to chatting!\nAlso, two quick questions before our call:\nWhat financial licenses do you have?\nDo you see demand for EUR/GBP?"
+      }
+    ],
+    "gold_reply": "Let's skip our call today and I'll reconnect with you once we are able to\nsupport Indian VASPs.\nDoes that make sense?\nBest,\nFerdi",
+    "source_conversation": "convo_18",
+    "expected_stage": "scheduled",
+    "expected_outcome": "pivot_to_call",
+    "notes": "Ferdi then explicitly pivoted away from the scheduled call and asked for agreement to postpone until the product can support the prospect’s license type. This is a polite, relationship-preserving dis"
   }
 ]

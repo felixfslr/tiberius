@@ -18,6 +18,11 @@ export function miniModel() {
   return client()(serverEnv().OPENAI_MODEL_MINI);
 }
 
+export function goldJudgeModel() {
+  const env = serverEnv();
+  return client()(env.OPENAI_MODEL_JUDGE ?? env.OPENAI_MODEL_REPLY);
+}
+
 export function embeddingModel() {
   return client().embedding(serverEnv().OPENAI_MODEL_EMBED);
 }
