@@ -2,20 +2,6 @@ import { z } from "zod";
 import { UUID } from "./common";
 
 export const AgentConfigSchema = z.object({
-  tone: z
-    .enum(["professional-warm", "casual", "formal", "direct", "friendly"])
-    .default("professional-warm"),
-  response_length: z.enum(["short", "medium", "long"]).default("medium"),
-  goal: z
-    .enum([
-      "book_discovery_call",
-      "qualify_lead",
-      "answer_question",
-      "handle_objection",
-      "follow_up",
-    ])
-    .default("book_discovery_call"),
-  pushiness: z.enum(["low", "medium", "high"]).default("low"),
   confidence_threshold: z.number().min(0).max(1).default(0.6),
   calendly_url: z.string().url().optional(),
   available_documents: z

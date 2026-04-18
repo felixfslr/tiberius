@@ -335,9 +335,7 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
               </TabsContent>
             </Tabs>
             <div className="text-[11px] text-muted-foreground">
-              Enter to generate · tone: {agent.config.tone} · goal:{" "}
-              {agent.config.goal} · threshold:{" "}
-              {agent.config.confidence_threshold}
+              Enter to generate · threshold: {agent.config.confidence_threshold}
             </div>
           </div>
         </div>

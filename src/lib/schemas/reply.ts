@@ -26,8 +26,12 @@ export const GeneratedReplySchema = z.object({
   reasoning: z
     .string()
     .max(500)
-    .describe("Brief rationale: which SOPs/facts guided the reply and why this tone/length."),
-  detected_intent: z.string().describe("Primary intent you inferred (matches state.intents)."),
+    .describe(
+      "Brief rationale: which SOPs/facts guided the reply and how you matched the customer's tone.",
+    ),
+  detected_intent: z
+    .string()
+    .describe("Primary intent you inferred (matches state.intents)."),
   suggested_tool: SuggestedToolSchema.describe(
     "A tool to attach to the reply, or 'none'. 'flag_for_review' = don't send, route to human.",
   ),

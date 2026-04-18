@@ -22,10 +22,6 @@ const DEFAULT_AGENT = {
   description:
     "Drafts replies for incoming WhatsApp/Telegram sales messages during the pre-discovery phase.",
   config: {
-    tone: "professional-warm",
-    response_length: "medium",
-    goal: "book_discovery_call",
-    pushiness: "low",
     confidence_threshold: 0.6,
     calendly_url: "https://calendly.com/ivy-sales/discovery",
     available_documents: [],
@@ -43,10 +39,16 @@ async function main() {
     process.exit(1);
   }
   if (existing) {
-    console.log(`Default agent already exists: ${existing.id} (${existing.name})`);
+    console.log(
+      `Default agent already exists: ${existing.id} (${existing.name})`,
+    );
     return;
   }
-  const { data, error } = await sb.from("agents").insert(DEFAULT_AGENT).select().single();
+  const { data, error } = await sb
+    .from("agents")
+    .insert(DEFAULT_AGENT)
+    .select()
+    .single();
   if (error) {
     console.error("Failed to seed agent:", error);
     process.exit(1);

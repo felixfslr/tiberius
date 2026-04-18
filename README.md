@@ -120,7 +120,12 @@ Response (public subset for external callers):
   "data": {
     "reply_text": "Thanks — at that volume, pricing would be custom. …",
     "confidence": 0.87,
-    "confidence_breakdown": { "retrieval": 0.99, "intent": 0.98, "groundedness": 0.80, "consistency": 0.70 },
+    "confidence_breakdown": {
+      "retrieval": 0.99,
+      "intent": 0.98,
+      "groundedness": 0.8,
+      "consistency": 0.7
+    },
     "detected_stage": "qualifying",
     "detected_intent": "pricing",
     "suggested_tool": "send_calendly_link",
@@ -136,13 +141,15 @@ Response (public subset for external callers):
 ### Config override per call
 
 Add a `config_override` field to the request body to temporarily change
-tone/length/etc. without touching the stored agent config:
+the confidence threshold or Calendly URL without touching the stored
+agent config. Tone, length, and intent are mirrored from the incoming
+message and are not configurable.
 
 ```json
 {
   "trigger_message": "…",
   "history": [],
-  "config_override": { "tone": "direct", "response_length": "short" }
+  "config_override": { "confidence_threshold": 0.4 }
 }
 ```
 

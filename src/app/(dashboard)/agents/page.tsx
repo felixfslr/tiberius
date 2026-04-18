@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Bot, Sparkles } from "lucide-react";
 import { listAgents } from "@/lib/services/agents";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { CreateAgentDialog } from "@/components/app/create-agent-dialog";
 import { AgentRowActions } from "@/components/app/agent-row-actions";
 
@@ -62,17 +61,6 @@ export default async function AgentsPage() {
                       {a.description}
                     </p>
                   ) : null}
-                </div>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge
-                    variant="secondary"
-                    className="bg-primary/10 text-primary"
-                  >
-                    {a.config.goal}
-                  </Badge>
-                  <Badge variant="outline" className="font-normal">
-                    {a.config.tone}
-                  </Badge>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span>threshold {a.config.confidence_threshold}</span>

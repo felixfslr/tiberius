@@ -74,10 +74,6 @@ export default async function OverviewPage({
           </Link>
         </div>
         <Card className="divide-y divide-border overflow-hidden p-0 shadow-sm">
-          <ConfigRow label="Goal" value={cfg.goal} />
-          <ConfigRow label="Tone" value={cfg.tone} />
-          <ConfigRow label="Response length" value={cfg.response_length} />
-          <ConfigRow label="Pushiness" value={cfg.pushiness} />
           <ConfigRow
             label="Calendly URL"
             value={cfg.calendly_url ?? "—"}

@@ -14,7 +14,8 @@ import { requireUser } from "@/lib/auth/session";
 export async function createAgentAction(formData: FormData) {
   await requireUser();
   const name = String(formData.get("name") ?? "").trim();
-  const description = String(formData.get("description") ?? "").trim() || undefined;
+  const description =
+    String(formData.get("description") ?? "").trim() || undefined;
   if (!name) throw new Error("Name is required");
   const agent = await createAgent({ name, description });
   revalidatePath("/agents");
@@ -38,10 +39,6 @@ export async function cloneAgentAction(id: string) {
 export async function updateAgentConfigAction(id: string, formData: FormData) {
   await requireUser();
   const parsed = AgentConfigSchema.partial().parse({
-    tone: formData.get("tone") || undefined,
-    response_length: formData.get("response_length") || undefined,
-    goal: formData.get("goal") || undefined,
-    pushiness: formData.get("pushiness") || undefined,
     confidence_threshold: formData.get("confidence_threshold")
       ? Number(formData.get("confidence_threshold"))
       : undefined,
