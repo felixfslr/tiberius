@@ -1,0 +1,178 @@
+{
+  "run_at": "2026-04-18T18:35:40.727Z",
+  "n_cases": 9,
+  "results": [
+    {
+      "id": "pricing-cold",
+      "pass": true,
+      "violations": [],
+      "quality": 5,
+      "confidence": 0.8288017476350811,
+      "reply": "Pricing depends on volume, geography, and the rails you want to use, so I can’t quote a number here. At $50M/month in the EU, it’s definitely worth a quick look — happy to walk through the setup and pricing on a 30-minute call: https://calendly.com/ivy-sales/discovery",
+      "intent": "pricing",
+      "tool": "send_calendly_link",
+      "latency_ms": 7181,
+      "synthetic": true,
+      "has_gold": false
+    },
+    {
+      "id": "competitor-objection",
+      "pass": true,
+      "violations": [],
+      "quality": 4,
+      "confidence": 0.9257138874665757,
+      "reply": "Fair question. If your main need is crypto-native pay-ins and pay-outs, Ivy is built specifically for exchanges and focuses on faster, cheaper bank rails like SEPA Instant, ACH, FPS, and card. If helpful, I can share a quick side-by-side on where teams usually compare us with BVNK, or we can do a short discovery call: https://calendly.com/ivy-sales/discovery",
+      "intent": "competitor",
+      "tool": "send_calendly_link",
+      "latency_ms": 9294,
+      "synthetic": true,
+      "has_gold": false
+    },
+    {
+      "id": "scheduling-positive",
+      "pass": false,
+      "violations": [
+        "none of: calendly | calendar | book | slot | meet.getivy",
+        "intent product_fit ≠ expected scheduling"
+      ],
+      "quality": 2,
+      "confidence": 0.7063525442685958,
+      "reply": "Thanks for checking. I don’t want to overstate this without confirming from the team, so let me verify our current GBP Open Banking support and come back to you with a precise answer. If helpful, I can also loop in the right person for a quick follow-up.",
+      "intent": "product_fit",
+      "tool": "flag_for_review",
+      "latency_ms": 8231,
+      "gold_alignment": 2,
+      "intent_match": 2,
+      "stage_appropriateness": 3,
+      "tone_match": 3,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "hard-factual-unknown",
+      "pass": false,
+      "violations": [
+        "tool none ∉ {flag_for_review,send_calendly_link}"
+      ],
+      "quality": 4,
+      "confidence": 0.7103098899679587,
+      "reply": "Thanks — that’s helpful context. A VASP license in India and demand for EUR/GBP, including from MENA, sounds relevant; let’s use the call to dig into the exact flow, entities involved, and where Ivy could fit. Looking forward to speaking then.",
+      "intent": "product_fit",
+      "tool": "none",
+      "latency_ms": 33034,
+      "gold_alignment": 1,
+      "intent_match": 1,
+      "stage_appropriateness": 3,
+      "tone_match": 3,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "convo_01-turn1",
+      "pass": true,
+      "violations": [],
+      "quality": 3,
+      "confidence": 0.7025360497661223,
+      "reply": "Thanks for clarifying — that helps. I don’t want to guess on the compliance side here: whether we can support payment initiation and real-time confirmation for a non-licensed marketplace in your setup needs a proper check with our team. I’ll route this internally and come back with a clear answer rather than point you in the wrong direction.",
+      "intent": "product_fit",
+      "tool": "flag_for_review",
+      "latency_ms": 7874,
+      "gold_alignment": 2,
+      "intent_match": 2,
+      "stage_appropriateness": 3,
+      "tone_match": 4,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "convo_01-turn2",
+      "pass": true,
+      "violations": [],
+      "quality": 2,
+      "confidence": 0.7018767530995473,
+      "reply": "Hi,\n\nThanks for the clear explanation — that helps. On the specifics of whether your unlicensed marketplace setup can use Ivy for payment confirmation / initiation, and whether Mollie is required, I don’t want to guess without confirming with our product/compliance team first.\n\nWe’re already set to speak on March 23, so I’ll bring this into the call and come back with a precise view on fit, setup, and any prerequisites. If helpful, feel free to send over a simple sketch of the intended payment flow beforehand so we can make that discussion more concrete.",
+      "intent": "product_fit",
+      "tool": "flag_for_review",
+      "latency_ms": 9012,
+      "gold_alignment": 2,
+      "intent_match": 2,
+      "stage_appropriateness": 4,
+      "tone_match": 4,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "convo_17-turn1",
+      "pass": true,
+      "violations": [],
+      "quality": 3,
+      "confidence": 0.6883173352309465,
+      "reply": "Great to meet you too — thanks, X. Looking forward to speaking once you’ve grabbed a slot. If helpful, here’s the calendar link again: https://calendly.com/ivy-sales/discovery",
+      "intent": "scheduling",
+      "tool": "send_calendly_link",
+      "latency_ms": 5401,
+      "gold_alignment": 1,
+      "intent_match": 0,
+      "stage_appropriateness": 0,
+      "tone_match": 3,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "convo_17-turn2",
+      "pass": true,
+      "violations": [],
+      "quality": 1,
+      "confidence": 0.7007739088061669,
+      "reply": "Thanks for clarifying — that makes sense. I can’t confirm chain support for X from what I have here, but this does sound worth a brief discussion with the team on our side to understand the use case and whether it could fit into our existing flows. If helpful, feel free to grab a slot here: https://calendly.com/ivy-sales/discovery, and if you prefer, I can also route this internally and follow up after checking first.",
+      "intent": "scheduling",
+      "tool": "send_calendly_link",
+      "latency_ms": 28353,
+      "gold_alignment": 1,
+      "intent_match": 0,
+      "stage_appropriateness": 0,
+      "tone_match": 2,
+      "synthetic": false,
+      "has_gold": true
+    },
+    {
+      "id": "convo_18-turn2",
+      "pass": true,
+      "violations": [],
+      "quality": 1,
+      "confidence": 0.7083098899679587,
+      "reply": "Thanks — that’s helpful. A VASP license in India and demand for EUR/GBP, including from MENA, gives us a good starting point for the conversation. Looking forward to the call and we can dig into geography, compliance setup, and the specific payout/off-ramp flows you’re looking at.",
+      "intent": "product_fit",
+      "tool": "none",
+      "latency_ms": 6300,
+      "gold_alignment": 1,
+      "intent_match": 0,
+      "stage_appropriateness": 2,
+      "tone_match": 2,
+      "synthetic": false,
+      "has_gold": true
+    }
+  ],
+  "aggregates": {
+    "overall": {
+      "n": 9,
+      "pass_rate": 0.7777777777777778,
+      "quality_avg": 2.7777777777777777,
+      "confidence_avg": 0.7414435562454392
+    },
+    "synthetic": {
+      "n": 2,
+      "pass_rate": 1,
+      "quality_avg": 4.5
+    },
+    "ivy_real": {
+      "n": 7,
+      "pass_rate": 0.7142857142857143,
+      "quality_avg": 2.2857142857142856,
+      "gold_alignment_avg": 1.4285714285714286,
+      "intent_match_avg": 1,
+      "stage_appropriateness_avg": 2.142857142857143,
+      "tone_match_avg": 3
+    }
+  }
+}

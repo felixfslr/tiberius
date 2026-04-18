@@ -38,7 +38,7 @@ const PUSHINESS_HINT: Record<AgentConfig["pushiness"], string> = {
 
 const GOAL_HINT: Record<AgentConfig["goal"], string> = {
   book_discovery_call:
-    "Primary objective: book a 30-minute discovery call. When in doubt, route toward that.",
+    "Primary objective: book a 30-minute discovery call WHEN the prospect is a plausible fit. If <sops> or <similar_past_convos> show the situation is a disqualification / fit-mismatch / unsupported-region / stack-mismatch pattern, graceful disengagement IS the right answer — do not force a call or re-share a calendar link. Following the SOPs beats pursuing the goal when they conflict.",
   qualify_lead:
     "Primary objective: learn volume, geography, current rails, timelines before pitching.",
   answer_question:
