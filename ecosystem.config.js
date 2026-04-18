@@ -9,15 +9,15 @@ module.exports = {
   apps: [
     {
       name: "tiberius-worker",
-      script: "dist-worker/index.js",
+      script: "dist-worker/index.mjs",
       cwd: __dirname,
       instances: 1,
       exec_mode: "fork",
-      node_args: "--enable-source-maps",
+      interpreter: "node",
+      node_args: "--enable-source-maps --env-file=.env.production",
       env: {
         NODE_ENV: "production",
       },
-      env_file: ".env.production",
       error_file: "logs/worker.err.log",
       out_file: "logs/worker.out.log",
       time: true,

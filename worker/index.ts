@@ -1,6 +1,5 @@
-import { config as loadEnv } from "dotenv";
-loadEnv({ path: ".env.local" });
-loadEnv({ path: ".env.production", override: false });
+// Env vars come from Node's native `--env-file=...` flag — see package.json
+// scripts and ecosystem.config.js. No dotenv dependency in the bundle.
 
 import { consola } from "consola";
 import { createClient } from "@supabase/supabase-js";

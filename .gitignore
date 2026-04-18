@@ -48,3 +48,6 @@ supabase/.temp/
 
 # worker build output
 dist-worker/
+
+# pm2 logs
+/logs/
