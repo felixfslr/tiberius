@@ -1,5 +1,7 @@
+"use client";
+
 import Link from "next/link";
-import { headers } from "next/headers";
+import { usePathname } from "next/navigation";
 import {
   BookOpen,
   Bot,
@@ -8,26 +10,20 @@ import {
   Settings,
   KeyRound,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
-import { listAgents } from "@/lib/services/agents";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
-function pathnameFromHeaders(h: Headers): string {
-  // Next exposes request pathname via x-invoke-path or x-pathname; fall back to "/".
-  return h.get("x-invoke-path") ?? h.get("x-pathname") ?? "/";
-}
+type SidebarAgent = { id: string; name: string };
 
-export async function Sidebar() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const agents = await listAgents().catch(() => []);
-  const h = await headers();
-  const pathname = pathnameFromHeaders(h);
-
+export function Sidebar({
+  userEmail,
+  agents,
+}: {
+  userEmail: string | null;
+  agents: SidebarAgent[];
+}) {
+  const pathname = usePathname() ?? "/";
   const activeAgent =
     agents.find((a) => pathname.startsWith(`/agents/${a.id}`)) ?? null;
 
@@ -88,9 +84,7 @@ export async function Sidebar() {
       </nav>
 
       <div className="border-t p-3 text-sm">
-        <div className="truncate text-xs text-muted-foreground">
-          {user?.email}
-        </div>
+        <div className="truncate text-xs text-muted-foreground">{userEmail}</div>
         <form action="/auth/signout" method="post" className="mt-2">
           <Button type="submit" variant="outline" size="sm" className="w-full">
             <LogOut className="mr-2 h-4 w-4" /> Sign out

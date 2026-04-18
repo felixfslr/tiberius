@@ -7,7 +7,6 @@ const publicSchema = z.object({
 
 const serverSchema = publicSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(10),
-  DATABASE_URL_DIRECT: z.string().startsWith("postgres"),
   OPENAI_API_KEY: z.string().startsWith("sk-"),
   OPENAI_MODEL_REPLY: z.string().default("gpt-5.4"),
   OPENAI_MODEL_MINI: z.string().default("gpt-5.4-mini"),
@@ -43,7 +42,11 @@ function readServer(): ServerEnv {
   return parsed.data;
 }
 
-export const publicEnv = readPublic();
+let _publicCached: PublicEnv | null = null;
+export function publicEnv(): PublicEnv {
+  if (!_publicCached) _publicCached = readPublic();
+  return _publicCached;
+}
 
 /**
  * Server-only env. Importing this from a Client Component will throw at build time
