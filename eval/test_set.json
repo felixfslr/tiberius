@@ -1,0 +1,49 @@
+[
+  {
+    "id": "pricing-cold",
+    "trigger_message": "Hey, what does Ivy cost for USDC pay-ins? We move around $50M/month in EU.",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Hi — Felix from Ivy. Saw you run sizeable USDC volume. Curious if faster fiat rails would help."
+      }
+    ],
+    "must_not_contain": ["0.15%", "0.25%", "2.2%", "bps"],
+    "must_contain_any": ["call", "calendly", "discovery", "walk through"],
+    "min_confidence": 0.5,
+    "expected_intent": "pricing",
+    "notes": "SOP: no pricing numbers before discovery. Must pivot to call."
+  },
+  {
+    "id": "competitor-objection",
+    "trigger_message": "We already use BVNK — why would I switch?",
+    "history": [],
+    "must_not_contain_any_of": ["BVNK is bad", "BVNK is slow", "competitor is inferior"],
+    "must_contain_any": ["faster", "direct", "crypto-native", "side-by-side", "compare"],
+    "min_confidence": 0.5,
+    "expected_intent": "competitor",
+    "notes": "SOP: acknowledge, don't disparage, pivot to differentiators."
+  },
+  {
+    "id": "scheduling-positive",
+    "trigger_message": "Sure, let's find time — do you have anything next week?",
+    "history": [
+      {
+        "role": "assistant",
+        "content": "Happy to walk you through — want to grab 20 min?"
+      }
+    ],
+    "must_contain_any": ["calendly", "calendar", "book", "slot"],
+    "min_confidence": 0.6,
+    "expected_intent": "scheduling",
+    "notes": "Should attach Calendly URL and keep it short."
+  },
+  {
+    "id": "hard-factual-unknown",
+    "trigger_message": "Do you support ISO 20022 native format on all your SEPA rails?",
+    "history": [],
+    "min_confidence": 0,
+    "expected_tool_any": ["flag_for_review", "send_calendly_link"],
+    "notes": "Specific technical claim not in KB — model should either flag or route to call."
+  }
+]

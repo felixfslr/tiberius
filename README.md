@@ -1,36 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tiberius
 
-## Getting Started
+AI reply-drafting agent for B2B sales conversations on WhatsApp / Telegram.
+Built for the thinc! × Ivy hackathon.
 
-First, run the development server:
+**Pitch in one line:** given a prospect's incoming message + chat history, Tiberius
+retrieves the right context from an editable knowledge base and drafts a grounded
+reply with a real confidence score.
+
+## What makes it different
+
+- **Hybrid retrieval** (not pure vector): HNSW semantic + FTS tsvector, fused via
+  RRF, plus metadata-filtered search, plus entity-triggered lookup. Then an LLM
+  listwise reranker over the merged top-25.
+- **Structured prompt slots**: `kb_facts`, `sops`, `tov_examples`, `similar_past_convos`,
+  `state`, `history`, `instructions` — each populated from retrieval so the generator
+  can cite `[kb-N]` / `[sop-N]` tags.
+- **Multi-signal confidence**: weighted average of retrieval coverage, intent classifier
+  confidence, LLM-judged groundedness of the draft against the chunks, and (stub)
+  self-consistency. Below the agent's threshold → `suggested_tool = flag_for_review`.
+- **Editable context**: every chunk is inline-editable in the UI; saving re-embeds.
+  Content-type-aware chunkers (glossary per-term, chat history per-conversation,
+  SOPs per rule, etc.).
+- **API-first**: everything the UI does is exposed at `/api/v1/*`, Bearer-auth,
+  OpenAPI spec at `/api/docs`, Swagger UI at `/api/docs/ui`.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · TypeScript 6 · Tailwind 4 · shadcn 4 ·
+Supabase (Postgres + pgvector + Storage + Realtime) · OpenAI (`gpt-5.4`,
+`gpt-5.4-mini`, `text-embedding-3-small`) via Vercel `ai` SDK 6 ·
+PM2 worker on Hetzner (polls Postgres via service-role RPC — no DB password
+in the stack).
+
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# 1. Create .env.local (gitignored) — see below.
+npm install
+
+# 2. Apply DB migrations (shared Supabase project).
+SUPABASE_ACCESS_TOKEN=<your_PAT> npx supabase@latest db push
+
+# 3. Seed the default agent.
+npm run seed
+
+# 4. Start dev + worker (two terminals).
+npm run dev         # app on :3007
+npm run worker:dev  # file-processing worker
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Env vars (`.env.local`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://kelnokyzpbboyhpfbudu.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+SUPABASE_SERVICE_ROLE_KEY=eyJ…
+OPENAI_API_KEY=sk-…
+OPENAI_MODEL_REPLY=gpt-5.4
+OPENAI_MODEL_MINI=gpt-5.4-mini
+OPENAI_MODEL_EMBED=text-embedding-3-small
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Key API calls
 
-## Learn More
+All external requests need `Authorization: Bearer <api_key>`. Create keys in the
+UI under an agent → API keys.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+export TIB_BASE=https://tiberius.felixfieseler.de
+export TIB_KEY=tib_…
+export TIB_AGENT=<agent_uuid>
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Upload knowledge
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# File upload
+curl -X POST "$TIB_BASE/api/v1/agents/$TIB_AGENT/files" \
+  -H "Authorization: Bearer $TIB_KEY" \
+  -F "file=@./ivy-pricing.pdf" \
+  -F "file_type=product_doc"
 
-## Deploy on Vercel
+# Raw text
+curl -X POST "$TIB_BASE/api/v1/agents/$TIB_AGENT/files/text" \
+  -H "Authorization: Bearer $TIB_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "filename": "competitor-notes.md",
+    "file_type": "tov_example",
+    "content": "Totally fair. Weve had a lot of teams move off BVNK for exactly that reason…"
+  }'
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Generate a reply
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+curl -X POST "$TIB_BASE/api/v1/agents/$TIB_AGENT/reply" \
+  -H "Authorization: Bearer $TIB_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "trigger_message": "Hey, what does Ivy charge for USDC pay-ins? We do ~$50M/mo EU.",
+    "history": [
+      {"role": "assistant", "content": "Hi — Felix from Ivy, saw your USDC volume is growing."}
+    ]
+  }'
+```
+
+Response (public subset for external callers):
+
+```json
+{
+  "data": {
+    "reply_text": "Thanks — at that volume, pricing would be custom. …",
+    "confidence": 0.87,
+    "confidence_breakdown": { "retrieval": 0.99, "intent": 0.98, "groundedness": 0.80, "consistency": 0.70 },
+    "detected_stage": "qualifying",
+    "detected_intent": "pricing",
+    "suggested_tool": "send_calendly_link",
+    "tool_args": { "calendly_url": "https://calendly.com/ivy-sales/discovery" },
+    "reply_log_id": "…",
+    "below_threshold": false,
+    "retrieved_chunk_ids": ["…", "…"]
+  },
+  "error": null
+}
+```
+
+### Config override per call
+
+Add a `config_override` field to the request body to temporarily change
+tone/length/etc. without touching the stored agent config:
+
+```json
+{
+  "trigger_message": "…",
+  "history": [],
+  "config_override": { "tone": "direct", "response_length": "short" }
+}
+```
+
+## Architecture
+
+```
+Browser / UI                 External caller (n8n, Make, …)
+  │ Supabase cookie            │ Authorization: Bearer tib_…
+  └───────────┬─────────────────┘
+              ▼
+         Next 16 App
+   ┌──────────┼──────────┐
+   │   Service Layer     │   ← src/lib/services/*  (single source of truth)
+   └──────────┼──────────┘
+              ▼
+┌─────────────────────────────────────┐
+│ Supabase (Postgres / Storage / RT)  │
+│  · pgvector HNSW cosine             │
+│  · FTS tsvector                     │
+│  · claim_pending_file() SKIP LOCKED │
+└─────────────────────────────────────┘
+              ▲
+              │ service-role (no DB password needed)
+┌─────────────────────────────────────┐
+│ Worker on Hetzner under PM2         │
+│  extract → chunk → enrich → embed   │
+└─────────────────────────────────────┘
+```
+
+## Development
+
+- `npm run dev` — Next on port 3007 (3000 is in use on the Hetzner box).
+- `npm run worker:dev` — worker via `tsx watch`.
+- `npm run seed` — creates the default "Ivy Sales Pre-Discovery" agent.
+- `npm test` — unit tests (retrieval: entity extractor, RRF merge).
+- `npm run eval` — eval runner against `eval/test_set.json` (LLM-as-judge).
+- `npx tsx scripts/smoke-ingest.ts` — end-to-end upload + processing.
+- `npx tsx scripts/smoke-retrieval.ts` — uploads sample knowledge + 3 probes.
+- `npx tsx scripts/smoke-reply.ts` — /reply API smoke (needs seeded knowledge).
+- `npx tsx scripts/retrieval-probe.ts "<trigger message>"` — CLI probe.
+
+## Deployment
+
+- **Vercel** hosts the Next.js app. `git push origin main` auto-deploys.
+  Environment variables live in Vercel Project Settings → Environment Variables.
+- **Hetzner** runs the worker under PM2:
+  ```bash
+  npm run worker:build   # tsup → dist-worker/index.js
+  pm2 start ecosystem.config.js
+  pm2 save
+  ```
+  The worker polls Supabase via the `claim_pending_file()` RPC — no direct
+  Postgres connection, no DB password in the worker env.
+
+## Schema changes
+
+The Supabase project is shared across all three devs and production. Every
+schema change is committed as a file under
+`supabase/migrations/<UTC>_<name>.sql` and applied with:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<your_PAT> npx supabase@latest db push
+```
+
+Destructive changes are announced in team chat first.
