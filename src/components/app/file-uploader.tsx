@@ -17,6 +17,7 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const FILE_TYPES = [
   { value: "product_doc", label: "Product doc" },
@@ -45,19 +46,52 @@ export function FileUploader({ agentId }: { agentId: string }) {
   function onFilePick(files: FileList | null) {
     if (!files || files.length === 0) return;
     startTransition(async () => {
+      const supabase = createClient();
       for (const file of Array.from(files)) {
-        const fd = new FormData();
-        fd.append("file", file);
-        fd.append("file_type", fileType);
-        const res = await fetch(`/api/v1/agents/${agentId}/files`, {
-          method: "POST",
-          body: fd,
-        });
-        const body = await res.json();
-        if (!res.ok) {
-          toast.error(`${file.name}: ${body?.error?.message ?? "upload failed"}`);
-        } else {
+        try {
+          // Step 1: ask the server for a signed upload URL.
+          const signRes = await fetch(`/api/v1/agents/${agentId}/files/sign`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              filename: file.name,
+              size_bytes: file.size,
+              mime_type: file.type || null,
+              file_type: fileType,
+            }),
+          });
+          const signBody = await signRes.json();
+          if (!signRes.ok) {
+            toast.error(`${file.name}: ${signBody?.error?.message ?? "sign failed"}`);
+            continue;
+          }
+          const { file_id, storage_path, token } = signBody.data;
+
+          // Step 2: upload directly to Supabase Storage — bypasses Vercel.
+          const { error: upErr } = await supabase.storage
+            .from("knowledge")
+            .uploadToSignedUrl(storage_path, token, file, {
+              contentType: file.type || "application/octet-stream",
+              upsert: true,
+            });
+          if (upErr) {
+            toast.error(`${file.name}: ${upErr.message}`);
+            continue;
+          }
+
+          // Step 3: finalize — flip status to 'pending' so the worker claims it.
+          const commitRes = await fetch(
+            `/api/v1/agents/${agentId}/files/${file_id}/commit`,
+            { method: "POST" },
+          );
+          const commitBody = await commitRes.json();
+          if (!commitRes.ok) {
+            toast.error(`${file.name}: ${commitBody?.error?.message ?? "commit failed"}`);
+            continue;
+          }
           toast.success(`Uploaded ${file.name}`);
+        } catch (e) {
+          toast.error(`${file.name}: ${(e as Error).message}`);
         }
       }
       router.refresh();

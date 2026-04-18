@@ -87,6 +87,103 @@ export async function uploadFile(
   return row as FileRecord;
 }
 
+/**
+ * Two-step direct-to-storage upload, used to bypass the Vercel API route body
+ * size limit (~4.5 MB on Hobby, 10 MB on Pro without Fluid Compute).
+ *
+ * Step 1: server creates a placeholder files row (status='uploading') and asks
+ * Supabase for a signed upload URL. Client is returned the URL + token.
+ * Step 2: client uploads the binary DIRECTLY to Supabase Storage using the
+ * signed URL. Traffic never touches our serverless function.
+ * Step 3: client calls commitUploadedFile() to flip status='pending' once the
+ * binary is on disk — worker then picks it up.
+ */
+export async function createSignedUpload(
+  agent_id: string,
+  filename: string,
+  mime: string | null,
+  size_bytes: number,
+  file_type: FileType,
+): Promise<{
+  file_id: string;
+  storage_path: string;
+  signed_url: string;
+  token: string;
+}> {
+  const sb = createServiceClient();
+  const { data: placeholder, error: insertErr } = await sb
+    .from("files")
+    .insert({
+      agent_id,
+      filename,
+      mime_type: mime,
+      size_bytes,
+      file_type,
+      storage_path: "pending",
+      status: "uploading",
+    })
+    .select("id")
+    .single();
+  if (insertErr) throw new Error(`Row insert failed: ${insertErr.message}`);
+
+  const path = storagePath(agent_id, placeholder.id, filename);
+  const { data, error: signErr } = await sb.storage
+    .from("knowledge")
+    .createSignedUploadUrl(path, { upsert: true });
+  if (signErr || !data) {
+    await sb.from("files").delete().eq("id", placeholder.id);
+    throw new Error(`Signed URL failed: ${signErr?.message ?? "unknown"}`);
+  }
+  return {
+    file_id: placeholder.id,
+    storage_path: path,
+    signed_url: data.signedUrl,
+    token: data.token,
+  };
+}
+
+/**
+ * Finalize a direct-to-storage upload: confirm the object exists in Storage,
+ * then flip status='pending' so the worker can claim it.
+ */
+export async function commitUploadedFile(
+  agent_id: string,
+  file_id: string,
+): Promise<FileRecord> {
+  const sb = createServiceClient();
+  const { data: file, error: getErr } = await sb
+    .from("files")
+    .select("*")
+    .eq("id", file_id)
+    .eq("agent_id", agent_id)
+    .single();
+  if (getErr || !file) throw new Error(`File not found`);
+  if (file.status !== "uploading") {
+    // Already committed — idempotent return.
+    return file as FileRecord;
+  }
+
+  // Verify the object is actually on disk before flipping status. Supabase
+  // returns a head-only list; if the path isn't there, the client lied.
+  const { data: head, error: headErr } = await sb.storage
+    .from("knowledge")
+    .list(`${agent_id}`, { search: file_id });
+  if (headErr) throw new Error(`Storage head failed: ${headErr.message}`);
+  if (!head?.some((obj) => obj.name.startsWith(file_id))) {
+    throw new Error("Storage object missing — upload was never completed");
+  }
+
+  const path = storagePath(agent_id, file_id, file.filename);
+  const { data: updated, error: updateErr } = await sb
+    .from("files")
+    .update({ storage_path: path, status: "pending" })
+    .eq("id", file_id)
+    .select("*")
+    .single();
+  if (updateErr) throw new Error(updateErr.message);
+  return updated as FileRecord;
+}
+
 /** Same as uploadFile, but input is a raw text string (user paste flow). */
 export async function uploadText(
   agent_id: string,
