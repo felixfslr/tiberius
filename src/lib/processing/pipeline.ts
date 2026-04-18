@@ -2,6 +2,7 @@ import { consola } from "consola";
 import { createServiceClient } from "@/lib/supabase/service";
 import { extractFromStorage } from "./extract";
 import { chunkText } from "./chunk";
+import { classifyFileType } from "./classify";
 import { enrichChunks } from "./enrich";
 import { embedBatch } from "./embed";
 import type { FileType } from "@/lib/schemas/file";
@@ -9,6 +10,7 @@ import type { FileType } from "@/lib/schemas/file";
 type FileRow = {
   id: string;
   agent_id: string;
+  filename: string;
   storage_path: string;
   mime_type: string | null;
   file_type: FileType;
@@ -16,7 +18,10 @@ type FileRow = {
 
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    const t = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms}ms`)),
+      ms,
+    );
     p.then(
       (v) => {
         clearTimeout(t);
@@ -40,7 +45,8 @@ async function setStatus(
     .from("files")
     .update({ status, ...extra })
     .eq("id", file_id);
-  if (error) consola.warn(`status update failed for ${file_id}: ${error.message}`);
+  if (error)
+    consola.warn(`status update failed for ${file_id}: ${error.message}`);
 }
 
 /**
@@ -48,11 +54,13 @@ async function setStatus(
  * Called by the worker for each `process_file` job. Idempotent: deletes existing
  * chunks for this file before inserting new ones, so retries recover cleanly.
  */
-export async function processFile(file_id: string): Promise<{ chunks: number }> {
+export async function processFile(
+  file_id: string,
+): Promise<{ chunks: number }> {
   const sb = createServiceClient();
   const { data: file, error } = await sb
     .from("files")
-    .select("id, agent_id, storage_path, mime_type, file_type")
+    .select("id, agent_id, filename, storage_path, mime_type, file_type")
     .eq("id", file_id)
     .single<FileRow>();
   if (error || !file) throw new Error(`File not found: ${file_id}`);
@@ -65,6 +73,22 @@ export async function processFile(file_id: string): Promise<{ chunks: number }> 
       "extract",
     );
     if (!text.trim()) throw new Error("Extracted text is empty");
+
+    const resolvedType = await withTimeout(
+      classifyFileType(text, file.filename),
+      30_000,
+      "classify",
+    );
+    if (resolvedType !== file.file_type) {
+      consola.info(
+        `File ${file.id}: type ${file.file_type} -> ${resolvedType}`,
+      );
+      file.file_type = resolvedType;
+      await sb
+        .from("files")
+        .update({ file_type: resolvedType })
+        .eq("id", file.id);
+    }
 
     await setStatus(sb, file.id, "chunking", {
       metadata: { raw_text_length: text.length, page_count: pageCount ?? null },
@@ -97,7 +121,8 @@ export async function processFile(file_id: string): Promise<{ chunks: number }> 
     for (let i = 0; i < rows.length; i += BATCH) {
       const slice = rows.slice(i, i + BATCH);
       const { error: insertErr } = await sb.from("chunks").insert(slice);
-      if (insertErr) throw new Error(`Chunk insert failed: ${insertErr.message}`);
+      if (insertErr)
+        throw new Error(`Chunk insert failed: ${insertErr.message}`);
     }
 
     await setStatus(sb, file.id, "ready", {

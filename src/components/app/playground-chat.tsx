@@ -8,7 +8,6 @@ import {
   MessageCircle,
   MessageSquareWarning,
   RefreshCw,
-  Send,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -259,9 +258,6 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
                   );
                   toast.success("Draft copied");
                 }}
-                onSend={() =>
-                  toast.message("Send integration not wired up yet")
-                }
               />
             ) : null}
             {pending ? (
@@ -422,13 +418,11 @@ function DraftCard({
   reply,
   onCopy,
   onRegenerate,
-  onSend,
 }: {
   agentId: string;
   reply: Reply;
   onCopy: () => void;
   onRegenerate: () => void;
-  onSend: () => void;
 }) {
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   return (
@@ -479,10 +473,6 @@ function DraftCard({
           disabled={!reply.reply_log_id}
         >
           <MessageSquareWarning className="mr-1.5 h-3.5 w-3.5" /> Feedback
-        </Button>
-        <div className="flex-1" />
-        <Button size="sm" onClick={onSend}>
-          <Send className="mr-1.5 h-3.5 w-3.5" /> Send
         </Button>
       </div>
       <FeedbackDialog

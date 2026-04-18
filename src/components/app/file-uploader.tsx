@@ -3,13 +3,6 @@
 import { useRef, useState, useTransition } from "react";
 import { Upload, FileText, Type as TypeIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,16 +12,6 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-
-const FILE_TYPES = [
-  { value: "product_doc", label: "Product doc" },
-  { value: "sop", label: "SOP" },
-  { value: "glossary", label: "Glossary" },
-  { value: "chat_history", label: "Chat history" },
-  { value: "transcript", label: "Call transcript" },
-  { value: "tov_example", label: "Tone-of-voice examples" },
-  { value: "convo_snippet", label: "Conversation snippet" },
-] as const;
 
 export function FileUploader({
   agentId,
@@ -44,11 +27,9 @@ export function FileUploader({
   const [dragging, setDragging] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [fileType, setFileType] = useState<string>("product_doc");
 
   const [textFilename, setTextFilename] = useState("notes.txt");
   const [textContent, setTextContent] = useState("");
-  const [textType, setTextType] = useState<string>("product_doc");
 
   function onFilePick(files: FileList | null) {
     if (!files || files.length === 0) return;
@@ -63,7 +44,6 @@ export function FileUploader({
               filename: file.name,
               size_bytes: file.size,
               mime_type: file.type || null,
-              file_type: fileType,
               folder_id: folderId,
             }),
           });
@@ -117,7 +97,6 @@ export function FileUploader({
         body: JSON.stringify({
           filename: textFilename,
           content: textContent,
-          file_type: textType,
           folder_id: folderId,
         }),
       });
@@ -147,21 +126,6 @@ export function FileUploader({
         </TabsList>
 
         <TabsContent value="file" className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <Label>Type</Label>
-            <Select value={fileType} onValueChange={(v) => v && setFileType(v)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FILE_TYPES.map((t) => (
-                  <SelectItem key={t.value} value={t.value}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -203,35 +167,15 @@ export function FileUploader({
 
         <TabsContent value="text">
           <form onSubmit={onPasteSubmit} className="flex flex-col gap-4">
-            <div className="grid grid-cols-[2fr_1fr] gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="paste-filename">Filename</Label>
-                <Input
-                  id="paste-filename"
-                  value={textFilename}
-                  onChange={(e) => setTextFilename(e.target.value)}
-                  placeholder="ivy-cheatsheet.txt"
-                  required
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label>Type</Label>
-                <Select
-                  value={textType}
-                  onValueChange={(v) => v && setTextType(v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {FILE_TYPES.map((t) => (
-                      <SelectItem key={t.value} value={t.value}>
-                        {t.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="paste-filename">Filename</Label>
+              <Input
+                id="paste-filename"
+                value={textFilename}
+                onChange={(e) => setTextFilename(e.target.value)}
+                placeholder="ivy-cheatsheet.txt"
+                required
+              />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="paste-content">Content</Label>

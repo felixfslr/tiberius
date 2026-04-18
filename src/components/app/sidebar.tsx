@@ -9,7 +9,6 @@ import {
   ChevronsUpDown,
   KeyRound,
   LayoutDashboard,
-  LibraryBig,
   LogOut,
   MessageSquare,
   MessageSquareWarning,
@@ -68,14 +67,6 @@ export function Sidebar({
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3 text-sm">
         <SectionLabel>Workspace</SectionLabel>
-        <SidebarLink
-          href="/agents"
-          active={pathname === "/agents"}
-          icon={<LibraryBig className="h-[18px] w-[18px]" />}
-          onClickIfFake={() => toast.message("Library coming soon")}
-        >
-          Library
-        </SidebarLink>
         <SidebarLink
           href="/agents"
           active={pathname === "/agents" || pathname.startsWith("/agents")}
