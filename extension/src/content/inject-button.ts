@@ -19,15 +19,24 @@ export function buildButton(onClick: (composeBody: HTMLElement) => void, compose
     "font: 500 13px/1 system-ui, -apple-system, 'Segoe UI', sans-serif",
     "cursor: pointer",
     "user-select: none",
+    "pointer-events: auto",
+    "position: relative",
+    "z-index: 10",
   ].join(";");
-  btn.innerHTML = `<span style="font-size:14px">✨</span><span>Draft with Tiberius</span>`;
+  btn.innerHTML = `<span style="font-size:14px;pointer-events:none">✨</span><span style="pointer-events:none">Draft with Tiberius</span>`;
   btn.addEventListener("mouseenter", () => (btn.style.background = "#000"));
   btn.addEventListener("mouseleave", () => (btn.style.background = "#111"));
-  btn.addEventListener("click", (e) => {
+  const trigger = (e: Event) => {
     e.preventDefault();
     e.stopPropagation();
+    console.debug("[tiberius] button clicked");
     onClick(composeBody);
-  });
+  };
+  btn.addEventListener("click", trigger, { capture: true });
+  btn.addEventListener("mousedown", (e) => {
+    // Fire on mousedown too — Gmail sometimes swallows bubbled clicks.
+    if ((e as MouseEvent).button === 0) trigger(e);
+  }, { capture: true });
   return btn;
 }
 
