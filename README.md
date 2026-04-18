@@ -7,6 +7,15 @@ Built for the thinc! × Ivy hackathon.
 retrieves the right context from an editable knowledge base and drafts a grounded
 reply with a real confidence score.
 
+**Live**
+
+- App & Playground: https://tiberius-nu.vercel.app
+- API base: `https://tiberius-nu.vercel.app/api/v1`
+- Swagger UI: https://tiberius-nu.vercel.app/api/docs/ui
+- OpenAPI JSON: https://tiberius-nu.vercel.app/api/docs
+- Default agent id (seeded "Ivy Sales Pre-Discovery"): `ae3becab-aac4-47ca-b17a-42ed39de4650`
+- Worker: PM2 process `tiberius-worker` on the Hetzner dev box (see below).
+
 ## What makes it different
 
 - **Hybrid retrieval** (not pure vector): HNSW semantic + FTS tsvector, fused via
@@ -64,12 +73,12 @@ OPENAI_MODEL_EMBED=text-embedding-3-small
 ## Key API calls
 
 All external requests need `Authorization: Bearer <api_key>`. Create keys in the
-UI under an agent → API keys.
+UI at `/agents/<id>/api-keys` — the value is shown exactly once.
 
 ```bash
-export TIB_BASE=https://tiberius.felixfieseler.de
+export TIB_BASE=https://tiberius-nu.vercel.app
 export TIB_KEY=tib_…
-export TIB_AGENT=<agent_uuid>
+export TIB_AGENT=ae3becab-aac4-47ca-b17a-42ed39de4650   # the seeded default
 ```
 
 ### Upload knowledge

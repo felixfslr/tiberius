@@ -36,16 +36,24 @@ Aliases from `components.json`: `@/components`, `@/components/ui`, `@/lib`, `@/l
 ## Commands
 
 ```bash
-npm run dev     # next dev
-npm run build   # next build
-npm run lint    # eslint (currently broken, see below)
+npm run dev          # next dev on :3007 (3000 is held by another PM2 process on the Hetzner box)
+npm run worker:dev   # file-processing worker (tsx watch); must run alongside dev for uploads to finish
+npm run build        # next build
+npm run seed         # seed the default "Ivy Sales Pre-Discovery" agent
+npm run eval         # eval runner against eval/test_set.json (LLM-as-judge)
+npm test             # vitest (retrieval unit tests)
+npm run lint         # eslint (currently broken, see below)
 ```
+
+Ad-hoc smoke scripts: `npx tsx scripts/smoke-{ingest,retrieval,reply}.ts`
+and `npx tsx scripts/retrieval-probe.ts "<trigger>"`.
 
 ## Auth (Supabase)
 
 - Clients in `src/lib/supabase/`: `client.ts` (browser), `server.ts` (RSC + route handlers), `middleware.ts` (session refresh helper).
 - **`src/proxy.ts`, not `middleware.ts`** — Next 16 renamed the file convention from `middleware` to `proxy`. Export a function named `proxy`. The helper in `src/lib/supabase/middleware.ts` keeps its name for parity with Supabase docs.
-- Protected routes: the proxy redirects unauthenticated requests under `/dashboard` to `/login`. Extend that list in `src/proxy.ts` → `updateSession`, not via per-page guards.
+- Protected routes: the proxy redirects unauthenticated requests under `/agents` (and the legacy `/dashboard`) to `/login`. Extend that list in `src/lib/supabase/middleware.ts` → `updateSession`, not via per-page guards.
+- External callers use API keys: `Authorization: Bearer tib_...` on `/api/v1/*`. Helper in `src/lib/auth/with-auth.ts` returns session-scope OR api-key-scope; api-key scope is pinned to one agent.
 - In Server Components always read the user with `supabase.auth.getUser()` (not `getSession()`) — `getUser()` validates the JWT.
 - Env vars required in every environment: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Missing → 500 on every page (the server client throws at construction).
 
@@ -62,17 +70,26 @@ NEXT_PUBLIC_SUPABASE_URL=https://kelnokyzpbboyhpfbudu.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_wlXVnPxbq0tvG3YCphNOXA_vvBwWndn
 ```
 
-Both values are publishable/public and safe to put in docs. Then `npm install && npm run dev`.
+Both values are publishable/public and safe to put in docs. You'll also need two secrets
+(get them from Felix / the team channel; never commit):
+
+```
+SUPABASE_SERVICE_ROLE_KEY=eyJ…        # worker + server-side admin, bypasses RLS
+OPENAI_API_KEY=sk-…                   # reply/rerank/enrich + embeddings
+```
+
+Then `npm install && npm run dev`, and in another terminal `npm run worker:dev`.
 
 ### Previewing locally before shipping
 
 When the user wants to see a change before it goes live:
 
-1. Start the dev server in the background: `npm run dev` (keep it running across turns; don't restart between edits).
-2. Tell the user the URL — usually http://localhost:3000, but Next falls back to 3001+ if the port is taken, so read the actual port from the dev server output.
-3. Edit files; Next.js hot-reloads in the browser automatically. No manual refresh needed.
-4. If the user wants to share a preview with someone else without shipping to prod: push to a branch (e.g. `preview/<topic>`) — Vercel auto-deploys each branch to its own URL.
-5. When the user says "ship it" / "push to main", commit and push.
+1. Start the dev server in the background: `npm run dev` (keep it running across turns; don't restart between edits). It binds to **port 3007** by default — 3000 is held by another PM2 app on the Hetzner box.
+2. If the user's change involves file uploads, also start `npm run worker:dev` so the processing pipeline actually runs.
+3. Tell the user the URL — http://localhost:3007. If that's taken for some reason, read the actual port from the dev server output.
+4. Edit files; Next.js hot-reloads in the browser automatically. No manual refresh needed.
+5. If the user wants to share a preview with someone else without shipping to prod: push to a branch (e.g. `preview/<topic>`) — Vercel auto-deploys each branch to its own URL.
+6. When the user says "ship it" / "push to main", commit and push. Prod is at https://tiberius-nu.vercel.app.
 
 ### Shipping changes
 
@@ -112,6 +129,18 @@ Reading existing schema: ask Claude to list tables / inspect columns via the Sup
 ### Env vars live in Vercel
 
 Production/Preview/Development env vars are set on Vercel (managed via `vercel env`). When a page 500s after deploy, check env vars there first. `.env.local` is local-only; never commit it.
+
+## File processing (async, polling-based)
+
+File uploads flow: API route writes to Storage + inserts `files` row with `status='uploading'` → flips to `'pending'` after the Storage PUT → worker picks it up.
+
+- Worker entry: `worker/index.ts`. Dev: `npm run worker:dev`. Prod: PM2 process `tiberius-worker` on Hetzner (`pm2 logs tiberius-worker`).
+- Queue mechanism: `claim_pending_file()` Postgres function with `FOR UPDATE SKIP LOCKED`. Called over PostgREST with the service-role key — **no DB password anywhere in the stack**. `pg-boss` is in `package.json` as a leftover but is NOT wired up; don't reintroduce it without a reason.
+- Pipeline: `src/lib/processing/pipeline.ts` — `extract → chunk (type-aware) → enrich (gpt-5.4-mini metadata) → embed (batched text-embedding-3-small)`. Idempotent: clears previous chunks before inserting on retry.
+
+## API surface
+
+Everything the UI does is also at `/api/v1/*`. Service layer (`src/lib/services/*`) is the single source of truth — route handlers are thin wrappers. OpenAPI at `/api/docs`, Swagger UI at `/api/docs/ui`. Response envelope is always `{data, error}`.
 
 ## shadcn MCP server
 
