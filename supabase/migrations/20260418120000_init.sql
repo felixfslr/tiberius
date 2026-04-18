@@ -6,7 +6,7 @@
 -- =====================================================================
 create extension if not exists vector;
 create extension if not exists pg_trgm;
-create extension if not exists "uuid-ossp";
+-- gen_random_uuid() is a builtin in Postgres 13+ (no extension needed).
 
 -- =====================================================================
 -- Tables
@@ -14,7 +14,7 @@ create extension if not exists "uuid-ossp";
 
 -- Agents (one per use case; e.g. "Ivy Sales Pre-Discovery")
 create table if not exists public.agents (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   name text not null,
   description text,
   config jsonb not null default '{}'::jsonb,
@@ -24,7 +24,7 @@ create table if not exists public.agents (
 
 -- Files uploaded to an agent's knowledge base
 create table if not exists public.files (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   agent_id uuid not null references public.agents(id) on delete cascade,
   filename text not null,
   storage_path text not null,
@@ -42,7 +42,7 @@ create index if not exists files_agent_idx on public.files (agent_id, uploaded_a
 
 -- Chunks (embedding unit, retrieved during reply generation)
 create table if not exists public.chunks (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   file_id uuid references public.files(id) on delete cascade,
   agent_id uuid not null references public.agents(id) on delete cascade,
   content text not null,
@@ -63,7 +63,7 @@ create index if not exists chunks_embedding_hnsw on public.chunks using hnsw (em
 
 -- API keys (external callers use bearer tokens; hashed at rest)
 create table if not exists public.api_keys (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   agent_id uuid not null references public.agents(id) on delete cascade,
   name text not null,
   key_hash text not null,
@@ -77,7 +77,7 @@ create index if not exists api_keys_agent_idx on public.api_keys (agent_id);
 
 -- Past conversations (for retrieval of similar past conversations)
 create table if not exists public.conversations (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   agent_id uuid not null references public.agents(id) on delete cascade,
   external_id text,
   messages jsonb not null default '[]'::jsonb,     -- [{role, content, ts}]
@@ -89,7 +89,7 @@ create index if not exists conversations_agent_idx on public.conversations (agen
 
 -- Reply logs (every generated draft — for eval + debug)
 create table if not exists public.reply_logs (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   agent_id uuid not null references public.agents(id) on delete cascade,
   trigger_message text not null,
   history jsonb not null default '[]'::jsonb,
