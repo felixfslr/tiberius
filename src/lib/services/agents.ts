@@ -18,6 +18,60 @@ function parseAgent(row: unknown): Agent {
   return AgentSchema.parse({ ...r, config: mergedConfig });
 }
 
+export type AgentStats = {
+  files_total: number;
+  files_ready: number;
+  keys: number;
+  folders: number;
+  chunks: number;
+};
+
+export type AgentLiveness = "live" | "draft";
+
+export async function getAgentStats(agent_id: string): Promise<AgentStats> {
+  const sb = createServiceClient();
+  const [
+    { count: filesTotal },
+    { count: filesReady },
+    { count: keys },
+    { count: folders },
+    { count: chunks },
+  ] = await Promise.all([
+    sb
+      .from("files")
+      .select("id", { count: "exact", head: true })
+      .eq("agent_id", agent_id),
+    sb
+      .from("files")
+      .select("id", { count: "exact", head: true })
+      .eq("agent_id", agent_id)
+      .eq("status", "ready"),
+    sb
+      .from("api_keys")
+      .select("id", { count: "exact", head: true })
+      .eq("agent_id", agent_id),
+    sb
+      .from("folders")
+      .select("id", { count: "exact", head: true })
+      .eq("agent_id", agent_id),
+    sb
+      .from("chunks")
+      .select("id", { count: "exact", head: true })
+      .eq("agent_id", agent_id),
+  ]);
+  return {
+    files_total: filesTotal ?? 0,
+    files_ready: filesReady ?? 0,
+    keys: keys ?? 0,
+    folders: folders ?? 0,
+    chunks: chunks ?? 0,
+  };
+}
+
+export function computeAgentStatus(stats: AgentStats): AgentLiveness {
+  return stats.files_ready > 0 && stats.keys > 0 ? "live" : "draft";
+}
+
 export async function listAgents(): Promise<Agent[]> {
   const sb = createServiceClient();
   const { data, error } = await sb
@@ -30,7 +84,11 @@ export async function listAgents(): Promise<Agent[]> {
 
 export async function getAgent(id: string): Promise<Agent | null> {
   const sb = createServiceClient();
-  const { data, error } = await sb.from("agents").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await sb
+    .from("agents")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
   if (error) throw new Error(error.message);
   return data ? parseAgent(data) : null;
 }
@@ -41,14 +99,21 @@ export async function createAgent(input: AgentCreate): Promise<Agent> {
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("agents")
-    .insert({ name: parsed.name, description: parsed.description ?? null, config })
+    .insert({
+      name: parsed.name,
+      description: parsed.description ?? null,
+      config,
+    })
     .select("*")
     .single();
   if (error) throw new Error(error.message);
   return parseAgent(data);
 }
 
-export async function updateAgent(id: string, patch: AgentPatch): Promise<Agent> {
+export async function updateAgent(
+  id: string,
+  patch: AgentPatch,
+): Promise<Agent> {
   const parsed = AgentPatchSchema.parse(patch);
   const update: Record<string, unknown> = {};
   if (parsed.name !== undefined) update.name = parsed.name;
@@ -56,7 +121,10 @@ export async function updateAgent(id: string, patch: AgentPatch): Promise<Agent>
   if (parsed.config !== undefined) {
     const existing = await getAgent(id);
     if (!existing) throw new Error("Agent not found");
-    update.config = AgentConfigSchema.parse({ ...existing.config, ...parsed.config });
+    update.config = AgentConfigSchema.parse({
+      ...existing.config,
+      ...parsed.config,
+    });
   }
   const sb = createServiceClient();
   const { data, error } = await sb

@@ -12,7 +12,9 @@ import {
 import { Card } from "@/components/ui/card";
 import { CreateKeyForm } from "@/components/app/create-key-form";
 import { RevokeKeyButton } from "@/components/app/revoke-key-button";
-import { PageHeader } from "@/components/app/page-header";
+import { CodeBlock } from "@/components/app/code-block";
+import { StatusPill } from "@/components/app/status-pill";
+import { relativeFromNow } from "@/lib/format/time";
 
 export const dynamic = "force-dynamic";
 
@@ -26,69 +28,105 @@ export default async function ApiKeysPage({
   if (!agent) notFound();
   const keys = await listKeys(id);
 
+  const host = process.env.NEXT_PUBLIC_VERCEL_URL
+    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+    : "http://localhost:3007";
+  const curl = `curl -X POST "${host}/api/v1/agents/${id}/reply" \\
+  -H "Authorization: Bearer tib_live_…" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "trigger_message": "What does Ivy charge for USDC pay-ins?",
+    "history": []
+  }'`;
+
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
-      <PageHeader
-        crumbs={[
-          { href: "/agents", label: "Agents" },
-          { href: `/agents/${id}/knowledge`, label: agent.name },
-        ]}
-        title="API keys"
-        description="Use a key with Authorization: Bearer <key> to call this agent from n8n, Make, or any HTTP client."
-        actions={<CreateKeyForm agentId={id} />}
-      />
+      <div>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Bearer tokens for external callers — n8n, Make, internal scripts. The
+          full value is shown exactly once when created; after that only the
+          prefix is visible. Scopes limit which endpoints a key can hit.
+        </p>
+      </div>
 
-      <Card className="overflow-hidden shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Prefix</TableHead>
-              <TableHead>Last used</TableHead>
-              <TableHead>Created</TableHead>
-              <TableHead className="w-12 text-right" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {keys.length === 0 ? (
+      <section className="space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            {keys.length} {keys.length === 1 ? "key" : "keys"}
+          </span>
+          <CreateKeyForm agentId={id} />
+        </div>
+
+        <Card className="overflow-hidden shadow-sm">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={5}
-                  className="py-10 text-center text-sm text-muted-foreground"
-                >
-                  No keys yet. Create one to start calling the API.
-                </TableCell>
+                <TableHead>Name</TableHead>
+                <TableHead>Prefix</TableHead>
+                <TableHead>Scope</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead>Last used</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="w-12 text-right" />
               </TableRow>
-            ) : (
-              keys.map((k) => (
-                <TableRow key={k.id}>
-                  <TableCell className="font-medium">{k.name}</TableCell>
-                  <TableCell>
-                    <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                      {k.key_prefix}…
-                    </code>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {k.last_used_at
-                      ? new Date(k.last_used_at).toLocaleString()
-                      : "never"}
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {new Date(k.created_at).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <RevokeKeyButton
-                      agentId={id}
-                      keyId={k.id}
-                      keyName={k.name}
-                    />
+            </TableHeader>
+            <TableBody>
+              {keys.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={7}
+                    className="py-10 text-center text-sm text-muted-foreground"
+                  >
+                    No keys yet. Create one to start calling the API.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </Card>
+              ) : (
+                keys.map((k) => (
+                  <TableRow key={k.id}>
+                    <TableCell className="font-medium">{k.name}</TableCell>
+                    <TableCell>
+                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
+                        {k.key_prefix}…
+                      </code>
+                    </TableCell>
+                    <TableCell>
+                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[11px]">
+                        reply
+                      </code>
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">
+                      {new Date(k.created_at).toISOString().slice(0, 10)}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {k.last_used_at
+                        ? relativeFromNow(new Date(k.last_used_at))
+                        : "never"}
+                    </TableCell>
+                    <TableCell>
+                      <StatusPill variant="active" />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <RevokeKeyButton
+                        agentId={id}
+                        keyId={k.id}
+                        keyName={k.name}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </Card>
+      </section>
+
+      <section>
+        <CodeBlock
+          title="Example — POST /api/v1/agents/{id}/reply"
+          language="bash"
+          code={curl}
+        />
+      </section>
     </div>
   );
 }

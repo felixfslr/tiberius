@@ -5,7 +5,9 @@ export type FolderRecord = {
   agent_id: string;
   parent_id: string | null;
   name: string;
+  description: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 export type FolderWithCount = FolderRecord & { file_count: number };
@@ -91,35 +93,53 @@ export async function createFolder(
   agent_id: string,
   name: string,
   parent_id: string | null = null,
+  description: string | null = null,
 ): Promise<FolderRecord> {
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Folder name required");
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("folders")
-    .insert({ agent_id, name: trimmed, parent_id })
+    .insert({
+      agent_id,
+      name: trimmed,
+      parent_id,
+      description: description?.trim() || null,
+    })
     .select("*")
     .single();
   if (error) throw new Error(error.message);
   return data as FolderRecord;
 }
 
-export async function renameFolder(
+export async function updateFolder(
   id: string,
-  name: string,
+  patch: { name?: string; description?: string | null },
 ): Promise<FolderRecord> {
-  const trimmed = name.trim();
-  if (!trimmed) throw new Error("Folder name required");
+  const update: Record<string, unknown> = {};
+  if (patch.name !== undefined) {
+    const trimmed = patch.name.trim();
+    if (!trimmed) throw new Error("Folder name required");
+    update.name = trimmed;
+  }
+  if (patch.description !== undefined) {
+    update.description = patch.description
+      ? patch.description.trim() || null
+      : null;
+  }
   const sb = createServiceClient();
   const { data, error } = await sb
     .from("folders")
-    .update({ name: trimmed })
+    .update(update)
     .eq("id", id)
     .select("*")
     .single();
   if (error) throw new Error(error.message);
   return data as FolderRecord;
 }
+
+export const renameFolder = async (id: string, name: string) =>
+  updateFolder(id, { name });
 
 export async function deleteFolder(id: string): Promise<void> {
   const sb = createServiceClient();

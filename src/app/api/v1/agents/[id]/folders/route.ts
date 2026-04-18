@@ -26,6 +26,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     const body = (await req.json()) as {
       name?: unknown;
       parent_id?: unknown;
+      description?: unknown;
     };
     if (typeof body.name !== "string" || !body.name.trim()) {
       return err("bad_request", "`name` (non-empty string) required", 400);
@@ -38,7 +39,9 @@ export async function POST(req: NextRequest, { params }: Params) {
           : undefined;
     if (parentId === undefined)
       return err("bad_request", "`parent_id` must be uuid or null", 400);
-    const folder = await createFolder(id, body.name, parentId);
+    const description =
+      typeof body.description === "string" ? body.description : null;
+    const folder = await createFolder(id, body.name, parentId, description);
     return ok(folder, { status: 201 });
   } catch (e) {
     return handleUnknown(e);

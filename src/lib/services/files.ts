@@ -16,7 +16,37 @@ export type FileRecord = {
   metadata: Record<string, unknown>;
   uploaded_at: string;
   processed_at: string | null;
+  chunks_count?: number;
 };
+
+export async function chunksCountByFile(
+  agent_id: string,
+): Promise<Map<string, number>> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("chunks")
+    .select("file_id")
+    .eq("agent_id", agent_id)
+    .not("file_id", "is", null);
+  if (error) return new Map();
+  const map = new Map<string, number>();
+  for (const row of (data ?? []) as { file_id: string | null }[]) {
+    if (!row.file_id) continue;
+    map.set(row.file_id, (map.get(row.file_id) ?? 0) + 1);
+  }
+  return map;
+}
+
+export async function listFilesWithChunks(
+  agent_id: string,
+  folder?: FolderFilter,
+): Promise<FileRecord[]> {
+  const [files, counts] = await Promise.all([
+    listFiles(agent_id, folder),
+    chunksCountByFile(agent_id),
+  ]);
+  return files.map((f) => ({ ...f, chunks_count: counts.get(f.id) ?? 0 }));
+}
 
 export type FolderFilter = "all" | "unsorted" | string;
 
