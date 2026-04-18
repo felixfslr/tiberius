@@ -14,6 +14,7 @@ export const ContentTypeSchema = z.enum([
 export type ContentType = z.infer<typeof ContentTypeSchema>;
 
 export const FileStatusSchema = z.enum([
+  "uploading",
   "pending",
   "extracting",
   "chunking",

@@ -48,7 +48,8 @@ export async function uploadFile(
   file_type: FileType,
 ): Promise<FileRecord> {
   const sb = createServiceClient();
-  // Reserve the row first so we get an id for the storage path.
+  // Reserve the row with `status=uploading` so the worker's
+  // claim_pending_file() (which filters `status=pending`) won't race us.
   const { data: placeholder, error: insertErr } = await sb
     .from("files")
     .insert({
@@ -58,7 +59,7 @@ export async function uploadFile(
       size_bytes: bytes.byteLength,
       file_type,
       storage_path: "pending",
-      status: "pending",
+      status: "uploading",
     })
     .select("id")
     .single();
@@ -73,15 +74,16 @@ export async function uploadFile(
     throw new Error(`Storage upload failed: ${upErr.message}`);
   }
 
+  // Flip to `pending` only after the object is on disk — this is the hand-off
+  // point. enqueueProcessFile() updates status=pending, the worker claims it.
   const { data: row, error: updateErr } = await sb
     .from("files")
-    .update({ storage_path: path })
+    .update({ storage_path: path, status: "pending" })
     .eq("id", placeholder.id)
     .select("*")
     .single();
   if (updateErr) throw new Error(updateErr.message);
 
-  await enqueueProcessFile(placeholder.id);
   return row as FileRecord;
 }
 
