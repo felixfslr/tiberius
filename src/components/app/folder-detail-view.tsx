@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Inbox, Search, Trash2 } from "lucide-react";
+import { FileText, Inbox, Search, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -79,12 +79,108 @@ export function FolderDetailView({
   const [search, setSearch] = useState("");
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState(description ?? "");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return files;
     return files.filter((f) => f.filename.toLowerCase().includes(q));
   }, [files, search]);
+
+  // Drop selection when the file set changes underneath us (e.g. nav between folders).
+  useEffect(() => {
+    setSelected((s) => {
+      if (s.size === 0) return s;
+      const ids = new Set(files.map((f) => f.id));
+      const next = new Set<string>();
+      for (const id of s) if (ids.has(id)) next.add(id);
+      return next.size === s.size ? s : next;
+    });
+  }, [files]);
+
+  const visibleIds = useMemo(() => filtered.map((r) => r.id), [filtered]);
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  const someVisibleSelected =
+    !allVisibleSelected && visibleIds.some((id) => selected.has(id));
+  const selectedCount = selected.size;
+
+  function toggleRow(id: string) {
+    setSelected((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    if (allVisibleSelected) {
+      setSelected((s) => {
+        const next = new Set(s);
+        for (const id of visibleIds) next.delete(id);
+        return next;
+      });
+    } else {
+      setSelected((s) => {
+        const next = new Set(s);
+        for (const id of visibleIds) next.add(id);
+        return next;
+      });
+    }
+  }
+
+  function onBulkDelete() {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    if (
+      !confirm(
+        `Delete ${ids.length} file${ids.length === 1 ? "" : "s"}? All chunks will be removed.`,
+      )
+    )
+      return;
+    startTransition(async () => {
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch(`/api/v1/agents/${agentId}/files/${id}`, { method: "DELETE" }),
+        ),
+      );
+      const ok = results.filter(
+        (r) => r.status === "fulfilled" && r.value.ok,
+      ).length;
+      const failed = ids.length - ok;
+      if (failed === 0)
+        toast.success(`Deleted ${ok} file${ok === 1 ? "" : "s"}`);
+      else if (ok === 0) toast.error(`Delete failed for all ${ids.length}`);
+      else toast.warning(`Deleted ${ok}, ${failed} failed`);
+      setSelected(new Set());
+      router.refresh();
+    });
+  }
+
+  function onBulkMove(folderId: string | null) {
+    const ids = Array.from(selected);
+    if (ids.length === 0) return;
+    startTransition(async () => {
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch(`/api/v1/agents/${agentId}/files/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ folder_id: folderId }),
+          }),
+        ),
+      );
+      const ok = results.filter(
+        (r) => r.status === "fulfilled" && r.value.ok,
+      ).length;
+      if (ok === ids.length)
+        toast.success(`Moved ${ok} file${ok === 1 ? "" : "s"}`);
+      else toast.warning(`Moved ${ok} of ${ids.length}`);
+      setSelected(new Set());
+      router.refresh();
+    });
+  }
 
   function saveDescription() {
     if (!currentFolderId) {
@@ -334,6 +430,62 @@ export function FolderDetailView({
           </div>
         </div>
 
+        {selectedCount > 0 ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-3 py-2 text-sm">
+            <div className="flex items-center gap-2 font-medium">
+              <span>{selectedCount} selected</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-muted-foreground"
+                onClick={() => setSelected(new Set())}
+                disabled={pending}
+              >
+                <X className="mr-1 h-3 w-3" />
+                Clear
+              </Button>
+            </div>
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="outline" size="sm" disabled={pending} />
+                  }
+                >
+                  <FolderInput className="mr-1.5 h-3.5 w-3.5" />
+                  Move to
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Move {selectedCount} to folder
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem onClick={() => onBulkMove(null)}>
+                    Unsorted
+                  </DropdownMenuItem>
+                  {subfolders.length > 0 ? <DropdownMenuSeparator /> : null}
+                  {subfolders.map((f) => (
+                    <DropdownMenuItem
+                      key={f.id}
+                      onClick={() => onBulkMove(f.id)}
+                    >
+                      {f.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onBulkDelete}
+                disabled={pending}
+              >
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
         {filtered.length === 0 ? (
           <Card className="flex flex-col items-center gap-2 p-10 text-center text-sm text-muted-foreground shadow-sm">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted">
@@ -354,6 +506,14 @@ export function FolderDetailView({
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <IndeterminateCheckbox
+                      checked={allVisibleSelected}
+                      indeterminate={someVisibleSelected}
+                      onChange={toggleAllVisible}
+                      ariaLabel="Select all visible files"
+                    />
+                  </TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead className="w-28">Type</TableHead>
                   <TableHead className="w-20">Chunks</TableHead>
@@ -364,99 +524,114 @@ export function FolderDetailView({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r) => (
-                  <TableRow key={r.id} className="group">
-                    <TableCell>
-                      <Link
-                        href={`/agents/${agentId}/knowledge/files/${r.id}`}
-                        className="flex items-center gap-2 font-medium hover:text-primary"
-                      >
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        {r.filename}
-                      </Link>
-                      {r.error ? (
-                        <div className="mt-0.5 text-xs text-destructive">
-                          {r.error}
-                        </div>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <TypeChip type={r.file_type} />
-                    </TableCell>
-                    <TableCell className="font-mono text-xs tabular-nums">
-                      {r.chunks_count}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {formatBytes(r.size_bytes)}
-                    </TableCell>
-                    <TableCell>
-                      <FileStatusBadge status={r.status} />
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {relativeFromNow(new Date(r.uploaded_at))}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              disabled={pending}
-                              className={cn(
-                                "h-7 w-7 opacity-0 group-hover:opacity-100",
-                              )}
-                            />
-                          }
+                {filtered.map((r) => {
+                  const isSelected = selected.has(r.id);
+                  return (
+                    <TableRow
+                      key={r.id}
+                      className="group"
+                      data-state={isSelected ? "selected" : undefined}
+                    >
+                      <TableCell className="w-10">
+                        <IndeterminateCheckbox
+                          checked={isSelected}
+                          indeterminate={false}
+                          onChange={() => toggleRow(r.id)}
+                          ariaLabel={`Select ${r.filename}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/agents/${agentId}/knowledge/files/${r.id}`}
+                          className="flex items-center gap-2 font-medium hover:text-primary"
                         >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuSub>
-                            <DropdownMenuSubTrigger>
-                              <FolderInput className="mr-2 h-4 w-4" /> Move to
-                            </DropdownMenuSubTrigger>
-                            <DropdownMenuSubContent>
-                              <DropdownMenuLabel className="text-xs text-muted-foreground">
-                                Move to folder
-                              </DropdownMenuLabel>
-                              <DropdownMenuItem
-                                onClick={() => onFileMove(r.id, null)}
-                                disabled={r.folder_id === null}
-                              >
-                                Unsorted
-                              </DropdownMenuItem>
-                              {subfolders.length > 0 ? (
-                                <DropdownMenuSeparator />
-                              ) : null}
-                              {subfolders.map((f) => (
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                          {r.filename}
+                        </Link>
+                        {r.error ? (
+                          <div className="mt-0.5 text-xs text-destructive">
+                            {r.error}
+                          </div>
+                        ) : null}
+                      </TableCell>
+                      <TableCell>
+                        <TypeChip type={r.file_type} />
+                      </TableCell>
+                      <TableCell className="font-mono text-xs tabular-nums">
+                        {r.chunks_count}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {formatBytes(r.size_bytes)}
+                      </TableCell>
+                      <TableCell>
+                        <FileStatusBadge status={r.status} />
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {relativeFromNow(new Date(r.uploaded_at))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={pending}
+                                className={cn(
+                                  "h-7 w-7 opacity-0 group-hover:opacity-100",
+                                )}
+                              />
+                            }
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <FolderInput className="mr-2 h-4 w-4" /> Move to
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent>
+                                <DropdownMenuLabel className="text-xs text-muted-foreground">
+                                  Move to folder
+                                </DropdownMenuLabel>
                                 <DropdownMenuItem
-                                  key={f.id}
-                                  onClick={() => onFileMove(r.id, f.id)}
-                                  disabled={r.folder_id === f.id}
+                                  onClick={() => onFileMove(r.id, null)}
+                                  disabled={r.folder_id === null}
                                 >
-                                  {f.name}
+                                  Unsorted
                                 </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuSubContent>
-                          </DropdownMenuSub>
-                          <DropdownMenuItem
-                            onClick={() => onFileReprocess(r.id)}
-                          >
-                            <RefreshCw className="mr-2 h-4 w-4" /> Reprocess
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            variant="destructive"
-                            onClick={() => onFileDelete(r.id, r.filename)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                                {subfolders.length > 0 ? (
+                                  <DropdownMenuSeparator />
+                                ) : null}
+                                {subfolders.map((f) => (
+                                  <DropdownMenuItem
+                                    key={f.id}
+                                    onClick={() => onFileMove(r.id, f.id)}
+                                    disabled={r.folder_id === f.id}
+                                  >
+                                    {f.name}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuItem
+                              onClick={() => onFileReprocess(r.id)}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" /> Reprocess
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => onFileDelete(r.id, r.filename)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </Card>
@@ -477,4 +652,29 @@ function formatBytes(b: number | null): string {
   if (b < 1024) return `${b} B`;
   if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
   return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function IndeterminateCheckbox({
+  checked,
+  indeterminate,
+  onChange,
+  ariaLabel,
+}: {
+  checked: boolean;
+  indeterminate: boolean;
+  onChange: () => void;
+  ariaLabel: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      aria-label={ariaLabel}
+      checked={checked}
+      onChange={onChange}
+      ref={(el) => {
+        if (el) el.indeterminate = indeterminate;
+      }}
+      className="h-4 w-4 shrink-0 cursor-pointer rounded border-input accent-primary"
+    />
+  );
 }
