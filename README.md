@@ -1,5 +1,12 @@
 # Tiberius
 
+[Pitch Deck (PDF)](presentation/260420_asktiberius%20%E2%80%94%20deck.pdf)
+
+## Live Demo
+
+Die Login-Daten für die Live-Demo können aus Gründen vertrauenswürdiger Inhalte
+nicht öffentlich geteilt werden. Bitte fragt die Zugangsdaten direkt bei uns an.
+
 AI reply-drafting agent for B2B sales conversations on WhatsApp / Telegram.
 Built for the thinc! × Ivy hackathon.
 
