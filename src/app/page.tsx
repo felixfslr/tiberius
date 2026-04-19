@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { Hero } from "@/components/landing/hero";
 import { FlowSection } from "@/components/landing/flow-section";
@@ -16,13 +14,7 @@ export const metadata: Metadata = {
     "One knowledge graph for sales, support, and every chat-based team. Hybrid retrieval, editable chunks, multi-signal confidence. API-first, MCP-next.",
 };
 
-export default async function Home() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (user) redirect("/app/agents");
-
+export default function Home() {
   return (
     <div className="dark relative min-h-svh overflow-x-hidden bg-background text-foreground">
       <LandingNav />
