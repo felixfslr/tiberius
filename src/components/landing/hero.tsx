@@ -1,10 +1,21 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
 import { TiberiusBust } from "./tiberius-bust";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+// R3F uses browser-only APIs; render the ASCII bust on the server and swap in
+// the GLB canvas on the client once it's ready.
+const Oceanus3D = dynamic(
+  () => import("./oceanus-3d").then((m) => m.Oceanus3D),
+  {
+    ssr: false,
+    loading: () => <TiberiusBust className="w-full" />,
+  },
+);
 
 export function Hero() {
   return (
@@ -113,8 +124,8 @@ export function Hero() {
           </motion.div>
         </div>
 
-        <div className="relative flex min-h-[360px] items-center justify-center lg:min-h-[520px]">
-          <TiberiusBust className="w-full" />
+        <div className="relative h-[420px] w-full lg:h-[560px]">
+          <Oceanus3D className="h-full w-full" />
         </div>
       </div>
     </section>
