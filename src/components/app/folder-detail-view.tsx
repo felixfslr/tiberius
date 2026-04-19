@@ -142,7 +142,9 @@ export function FolderDetailView({
     startTransition(async () => {
       const results = await Promise.allSettled(
         ids.map((id) =>
-          fetch(`/api/v1/agents/${agentId}/files/${id}`, { method: "DELETE" }),
+          fetch(`/api/v1/app/agents/${agentId}/files/${id}`, {
+            method: "DELETE",
+          }),
         ),
       );
       const ok = results.filter(
@@ -164,7 +166,7 @@ export function FolderDetailView({
     startTransition(async () => {
       const results = await Promise.allSettled(
         ids.map((id) =>
-          fetch(`/api/v1/agents/${agentId}/files/${id}`, {
+          fetch(`/api/v1/app/agents/${agentId}/files/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder_id: folderId }),
@@ -195,7 +197,7 @@ export function FolderDetailView({
     }
     startTransition(async () => {
       const res = await fetch(
-        `/api/v1/agents/${agentId}/folders/${currentFolderId}`,
+        `/api/v1/app/agents/${agentId}/folders/${currentFolderId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -222,7 +224,7 @@ export function FolderDetailView({
       return;
     startTransition(async () => {
       const res = await fetch(
-        `/api/v1/agents/${agentId}/folders/${currentFolderId}`,
+        `/api/v1/app/agents/${agentId}/folders/${currentFolderId}`,
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -231,7 +233,7 @@ export function FolderDetailView({
         return;
       }
       toast.success("Folder deleted");
-      router.push(`/agents/${agentId}/knowledge`);
+      router.push(`/app/agents/${agentId}/knowledge`);
       router.refresh();
     });
   }
@@ -242,7 +244,7 @@ export function FolderDetailView({
     )
       return;
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -254,7 +256,7 @@ export function FolderDetailView({
 
   function onFileReprocess(fileId: string) {
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "POST",
       });
       if (res.ok) toast.success("Reprocessing queued");
@@ -264,7 +266,7 @@ export function FolderDetailView({
 
   function onFileMove(fileId: string, folderId: string | null) {
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folder_id: folderId }),
@@ -281,7 +283,7 @@ export function FolderDetailView({
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1 text-sm">
         <Link
-          href={`/agents/${agentId}/knowledge`}
+          href={`/app/agents/${agentId}/knowledge`}
           className="text-primary hover:underline"
         >
           Knowledge
@@ -298,8 +300,8 @@ export function FolderDetailView({
               <Link
                 href={
                   p.id === "unsorted"
-                    ? `/agents/${agentId}/knowledge?folder=unsorted`
-                    : `/agents/${agentId}/knowledge?folder=${p.id}`
+                    ? `/app/agents/${agentId}/knowledge?folder=unsorted`
+                    : `/app/agents/${agentId}/knowledge?folder=${p.id}`
                 }
                 className="hover:text-foreground"
               >
@@ -542,7 +544,7 @@ export function FolderDetailView({
                       </TableCell>
                       <TableCell>
                         <Link
-                          href={`/agents/${agentId}/knowledge/files/${r.id}`}
+                          href={`/app/agents/${agentId}/knowledge/files/${r.id}`}
                           className="flex items-center gap-2 font-medium hover:text-primary"
                         >
                           <FileText className="h-4 w-4 text-muted-foreground" />

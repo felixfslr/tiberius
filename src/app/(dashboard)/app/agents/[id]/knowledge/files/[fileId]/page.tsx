@@ -24,7 +24,7 @@ export default async function FileDetailPage({
       <header className="flex items-start justify-between gap-4">
         <div className="flex flex-col gap-2">
           <Link
-            href={`/agents/${id}/knowledge`}
+            href={`/app/agents/${id}/knowledge`}
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="h-3 w-3" /> Back to knowledge

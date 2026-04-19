@@ -65,7 +65,7 @@ export function FolderTable({
       return;
     }
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/folders/${id}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/folders/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -88,7 +88,7 @@ export function FolderTable({
     )
       return;
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/folders/${id}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/folders/${id}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -121,7 +121,7 @@ export function FolderTable({
             <TableRow className="group">
               <TableCell>
                 <Link
-                  href={`/agents/${agentId}/knowledge?folder=unsorted`}
+                  href={`/app/agents/${agentId}/knowledge?folder=unsorted`}
                   className="flex items-center gap-2.5 font-medium"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
@@ -161,7 +161,7 @@ export function FolderTable({
                   </div>
                 ) : (
                   <Link
-                    href={`/agents/${agentId}/knowledge?folder=${f.id}`}
+                    href={`/app/agents/${agentId}/knowledge?folder=${f.id}`}
                     className="flex items-center gap-2.5 font-medium group-hover:text-primary"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary transition group-hover:bg-primary/15">

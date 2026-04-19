@@ -31,8 +31,13 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const needsAuth =
-    pathname.startsWith("/agents") || pathname.startsWith("/dashboard");
+  const needsAuth = pathname.startsWith("/app");
+
+  if (!user && (pathname === "/agents" || pathname.startsWith("/agents/"))) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname.replace(/^\/agents/, "/app/agents");
+    return NextResponse.redirect(url);
+  }
   if (!user && needsAuth) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";

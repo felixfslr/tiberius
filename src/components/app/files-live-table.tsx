@@ -159,7 +159,7 @@ export function FilesLiveTable({
 
   function onReprocess(fileId: string) {
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "POST",
       });
       if (res.ok) toast.success("Reprocessing queued");
@@ -173,7 +173,7 @@ export function FilesLiveTable({
     )
       return;
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -185,7 +185,7 @@ export function FilesLiveTable({
 
   function onMove(fileId: string, folderId: string | null) {
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/files/${fileId}`, {
+      const res = await fetch(`/api/v1/app/agents/${agentId}/files/${fileId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folder_id: folderId }),
@@ -209,7 +209,9 @@ export function FilesLiveTable({
     startTransition(async () => {
       const results = await Promise.allSettled(
         ids.map((id) =>
-          fetch(`/api/v1/agents/${agentId}/files/${id}`, { method: "DELETE" }),
+          fetch(`/api/v1/app/agents/${agentId}/files/${id}`, {
+            method: "DELETE",
+          }),
         ),
       );
       const ok = results.filter(
@@ -231,7 +233,7 @@ export function FilesLiveTable({
     startTransition(async () => {
       const results = await Promise.allSettled(
         ids.map((id) =>
-          fetch(`/api/v1/agents/${agentId}/files/${id}`, {
+          fetch(`/api/v1/app/agents/${agentId}/files/${id}`, {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ folder_id: folderId }),
@@ -352,7 +354,7 @@ export function FilesLiveTable({
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/agents/${agentId}/knowledge/files/${r.id}`}
+                      href={`/app/agents/${agentId}/knowledge/files/${r.id}`}
                       className="flex items-center gap-2 font-medium hover:underline"
                     >
                       <FileText className="h-4 w-4 text-muted-foreground" />

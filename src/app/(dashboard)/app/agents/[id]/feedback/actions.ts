@@ -32,7 +32,7 @@ export async function applyFeedbackAction(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     await applyFeedback(feedback_id);
-    revalidatePath(`/agents/${agent_id}/feedback`);
+    revalidatePath(`/app/agents/${agent_id}/feedback`);
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
@@ -45,7 +45,7 @@ export async function dismissFeedbackAction(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     await dismissFeedback(feedback_id);
-    revalidatePath(`/agents/${agent_id}/feedback`);
+    revalidatePath(`/app/agents/${agent_id}/feedback`);
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
@@ -58,7 +58,7 @@ export async function retryFeedbackAction(
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   try {
     await retryFeedback(feedback_id);
-    revalidatePath(`/agents/${agent_id}/feedback`);
+    revalidatePath(`/app/agents/${agent_id}/feedback`);
     return { ok: true };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };

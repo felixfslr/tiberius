@@ -67,7 +67,7 @@ export default async function OverviewPage({
             Configuration
           </h2>
           <Link
-            href={`/agents/${id}/config`}
+            href={`/app/agents/${id}/config`}
             className="text-xs font-medium text-primary hover:underline"
           >
             Edit config →
@@ -85,13 +85,13 @@ export default async function OverviewPage({
 
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <QuickLink
-          href={`/agents/${id}/knowledge`}
+          href={`/app/agents/${id}/knowledge`}
           icon={<BookOpen className="h-5 w-5" />}
           title="Knowledge"
           description="Upload files, organize into folders, inspect chunks."
         />
         <QuickLink
-          href={`/agents/${id}/playground`}
+          href={`/app/agents/${id}/playground`}
           icon={<MessageSquare className="h-5 w-5" />}
           title="Playground"
           description="Test replies, inspect retrieval trace and confidence."

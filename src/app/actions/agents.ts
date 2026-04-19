@@ -18,22 +18,22 @@ export async function createAgentAction(formData: FormData) {
     String(formData.get("description") ?? "").trim() || undefined;
   if (!name) throw new Error("Name is required");
   const agent = await createAgent({ name, description });
-  revalidatePath("/agents");
-  redirect(`/agents/${agent.id}/knowledge`);
+  revalidatePath("/app/agents");
+  redirect(`/app/agents/${agent.id}/knowledge`);
 }
 
 export async function deleteAgentAction(id: string) {
   await requireUser();
   await deleteAgent(id);
-  revalidatePath("/agents");
-  redirect("/agents");
+  revalidatePath("/app/agents");
+  redirect("/app/agents");
 }
 
 export async function cloneAgentAction(id: string) {
   await requireUser();
   const cloned = await cloneAgent(id);
-  revalidatePath("/agents");
-  redirect(`/agents/${cloned.id}/knowledge`);
+  revalidatePath("/app/agents");
+  redirect(`/app/agents/${cloned.id}/knowledge`);
 }
 
 export async function updateAgentConfigAction(id: string, formData: FormData) {
@@ -46,5 +46,5 @@ export async function updateAgentConfigAction(id: string, formData: FormData) {
   });
   const patch = AgentPatchSchema.parse({ config: parsed });
   await updateAgent(id, patch);
-  revalidatePath(`/agents/${id}`, "layout");
+  revalidatePath(`/app/agents/${id}`, "layout");
 }

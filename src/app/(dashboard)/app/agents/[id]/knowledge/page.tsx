@@ -129,7 +129,7 @@ export default async function KnowledgePage({
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
         <p className="text-sm text-muted-foreground">Folder not found.</p>
         <Link
-          href={`/agents/${id}/knowledge`}
+          href={`/app/agents/${id}/knowledge`}
           className={buttonVariants({ variant: "outline" })}
         >
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to folders

@@ -37,7 +37,7 @@ export function Sidebar({
 }) {
   const pathname = usePathname() ?? "/";
   const activeAgent =
-    agents.find((a) => pathname.startsWith(`/agents/${a.id}`)) ?? null;
+    agents.find((a) => pathname.startsWith(`/app/agents/${a.id}`)) ?? null;
   const ws = workspace ?? { name: "Tiberius", domain: "localhost:3007" };
 
   return (
@@ -67,8 +67,10 @@ export function Sidebar({
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3 text-sm">
         <SectionLabel>Workspace</SectionLabel>
         <SidebarLink
-          href="/agents"
-          active={pathname === "/agents" || pathname.startsWith("/agents")}
+          href="/app/agents"
+          active={
+            pathname === "/app/agents" || pathname.startsWith("/app/agents")
+          }
           icon={<Bot className="h-[18px] w-[18px]" />}
         >
           Agents
@@ -86,40 +88,46 @@ export function Sidebar({
               {activeAgent.name}
             </div>
             <SidebarLink
-              href={`/agents/${activeAgent.id}/overview`}
-              active={pathname.startsWith(`/agents/${activeAgent.id}/overview`)}
+              href={`/app/agents/${activeAgent.id}/overview`}
+              active={pathname.startsWith(
+                `/app/agents/${activeAgent.id}/overview`,
+              )}
               icon={<LayoutDashboard className="h-[18px] w-[18px]" />}
             >
               Overview
             </SidebarLink>
             <SidebarLink
-              href={`/agents/${activeAgent.id}/knowledge`}
+              href={`/app/agents/${activeAgent.id}/knowledge`}
               active={pathname.startsWith(
-                `/agents/${activeAgent.id}/knowledge`,
+                `/app/agents/${activeAgent.id}/knowledge`,
               )}
               icon={<BookOpen className="h-[18px] w-[18px]" />}
             >
               Knowledge
             </SidebarLink>
             <SidebarLink
-              href={`/agents/${activeAgent.id}/playground`}
+              href={`/app/agents/${activeAgent.id}/playground`}
               active={pathname.startsWith(
-                `/agents/${activeAgent.id}/playground`,
+                `/app/agents/${activeAgent.id}/playground`,
               )}
               icon={<MessageSquare className="h-[18px] w-[18px]" />}
             >
               Playground
             </SidebarLink>
             <SidebarLink
-              href={`/agents/${activeAgent.id}/feedback`}
-              active={pathname.startsWith(`/agents/${activeAgent.id}/feedback`)}
+              href={`/app/agents/${activeAgent.id}/feedback`}
+              active={pathname.startsWith(
+                `/app/agents/${activeAgent.id}/feedback`,
+              )}
               icon={<MessageSquareWarning className="h-[18px] w-[18px]" />}
             >
               Feedback
             </SidebarLink>
             <SidebarLink
-              href={`/agents/${activeAgent.id}/api-keys`}
-              active={pathname.startsWith(`/agents/${activeAgent.id}/api-keys`)}
+              href={`/app/agents/${activeAgent.id}/api-keys`}
+              active={pathname.startsWith(
+                `/app/agents/${activeAgent.id}/api-keys`,
+              )}
               icon={<KeyRound className="h-[18px] w-[18px]" />}
             >
               API keys

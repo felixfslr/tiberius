@@ -6,5 +6,5 @@ export default async function AgentIndexPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/agents/${id}/overview`);
+  redirect(`/app/agents/${id}/overview`);
 }

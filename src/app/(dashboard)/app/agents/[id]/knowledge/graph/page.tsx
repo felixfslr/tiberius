@@ -22,7 +22,7 @@ export default async function GraphPage({
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex items-center gap-3 border-b border-border px-5 py-2.5">
         <Link
-          href={`/agents/${id}/knowledge`}
+          href={`/app/agents/${id}/knowledge`}
           className="inline-flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3 w-3" />

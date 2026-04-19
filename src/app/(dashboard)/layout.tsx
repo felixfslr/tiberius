@@ -26,7 +26,7 @@ export default async function DashboardLayout({
   const h = await headers();
   const pathname = h.get("x-pathname") ?? h.get("x-invoke-path") ?? "";
   const activeAgent =
-    agents.find((a) => pathname.startsWith(`/agents/${a.id}`)) ?? null;
+    agents.find((a) => pathname.startsWith(`/app/agents/${a.id}`)) ?? null;
 
   let activeLive: "live" | "draft" = "draft";
   if (activeAgent) {

@@ -46,7 +46,7 @@ export default async function AgentsPage() {
                 <AgentRowActions agentId={a.id} agentName={a.name} />
               </div>
               <Link
-                href={`/agents/${a.id}/knowledge`}
+                href={`/app/agents/${a.id}/knowledge`}
                 className="flex flex-col gap-4"
               >
                 <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground shadow-md shadow-primary/20">

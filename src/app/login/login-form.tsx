@@ -45,7 +45,7 @@ export function LoginForm() {
         return;
       }
       router.refresh();
-      router.push("/agents");
+      router.push("/app/agents");
     } else {
       const { data, error } = await supabase.auth.signUp({ email, password });
       setLoading(false);
@@ -55,7 +55,7 @@ export function LoginForm() {
       }
       if (data.session) {
         router.refresh();
-        router.push("/agents");
+        router.push("/app/agents");
       } else {
         setInfo("Check your email to confirm your account.");
       }

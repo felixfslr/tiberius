@@ -48,7 +48,7 @@ export function KnowledgeTopStrip({
       {files.map((f) => (
         <Link
           key={f.id}
-          href={`/agents/${agentId}/knowledge/files/${f.id}`}
+          href={`/app/agents/${agentId}/knowledge/files/${f.id}`}
           className="group flex h-28 w-56 shrink-0 flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">

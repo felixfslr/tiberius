@@ -9,7 +9,7 @@ export default async function LoginPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (user) redirect("/agents");
+  if (user) redirect("/app/agents");
 
   return (
     <main className="grid min-h-svh bg-background lg:grid-cols-2">

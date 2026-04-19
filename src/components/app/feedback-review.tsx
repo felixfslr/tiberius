@@ -24,7 +24,7 @@ import {
   applyFeedbackAction,
   dismissFeedbackAction,
   retryFeedbackAction,
-} from "@/app/(dashboard)/agents/[id]/feedback/actions";
+} from "@/app/(dashboard)/app/agents/[id]/feedback/actions";
 import type { FeedbackAnalysis, FeedbackStatus } from "@/lib/schemas/feedback";
 import type { FeedbackRow } from "@/lib/services/feedback";
 import { cn } from "@/lib/utils";
@@ -119,7 +119,7 @@ export function FeedbackReview({
     const sp = new URLSearchParams(searchParams?.toString() ?? "");
     if (key === "all") sp.delete("status");
     else sp.set("status", key);
-    router.push(`/agents/${agentId}/feedback?${sp.toString()}`);
+    router.push(`/app/agents/${agentId}/feedback?${sp.toString()}`);
   }
 
   return (
@@ -133,7 +133,7 @@ export function FeedbackReview({
           </p>
         </div>
         <Link
-          href={`/agents/${agentId}/playground`}
+          href={`/app/agents/${agentId}/playground`}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Give feedback <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -211,7 +211,7 @@ function EmptyState({
       <p className="text-sm text-muted-foreground">{msg}</p>
       {filter === "all" ? (
         <Link
-          href={`/agents/${agentId}/playground`}
+          href={`/app/agents/${agentId}/playground`}
           className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           Open playground <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
@@ -248,7 +248,7 @@ function FeedbackCard({ row, agentId }: { row: FeedbackRow; agentId: string }) {
         </div>
         {row.applied_chunk_id ? (
           <Link
-            href={`/agents/${agentId}/knowledge/graph?highlight=${row.applied_chunk_id}`}
+            href={`/app/agents/${agentId}/knowledge/graph?highlight=${row.applied_chunk_id}`}
             className="text-[11px] font-medium text-primary hover:underline"
           >
             Show in graph →
