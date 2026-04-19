@@ -22,7 +22,8 @@ const PolishSchema = z.object({
 const SYSTEM = `You polish a draft sales reply to match Ferdi's historical tone.
 
 Rules:
-- Read the historical Ferdi replies as the tone target: register, sentence length, contractions, capitalization, greeting/sign-off habits, emoji usage.
+- Read the historical Ferdi replies as the tone target: register, sentence length, contractions, greeting/sign-off habits, emoji usage.
+- DO NOT change capitalization. The draft already mirrors the customer's caps style (sentence-case vs lowercase vs ALL CAPS) — keep it exactly as-is. Ignore the historical samples' capitalization even if they're predominantly lowercase.
 - Preserve the draft's MEANING, factual claims, and any inline citation markers like [kb-2] or [sop-1] exactly.
 - Preserve any tool intent (Calendly link, document attachment) — don't drop calls to action.
 - Don't change the language. Don't translate.
