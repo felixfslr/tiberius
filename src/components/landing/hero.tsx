@@ -3,18 +3,14 @@
 import dynamic from "next/dynamic";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { motion } from "motion/react";
-import { TiberiusBust } from "./tiberius-bust";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// R3F uses browser-only APIs; render the ASCII bust on the server and swap in
-// the GLB canvas on the client once it's ready.
+// R3F uses browser-only APIs. Skip SSR; the radial aura backplate in
+// Oceanus3D covers the empty space while the canvas mounts.
 const Oceanus3D = dynamic(
   () => import("./oceanus-3d").then((m) => m.Oceanus3D),
-  {
-    ssr: false,
-    loading: () => <TiberiusBust className="w-full" />,
-  },
+  { ssr: false, loading: () => null },
 );
 
 export function Hero() {

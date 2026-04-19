@@ -1,18 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ContactShadows, Environment, Float, useGLTF } from "@react-three/drei";
-import {
-  useMotionValue,
-  useSpring,
-  useScroll,
-  useTransform,
-  motion,
-  AnimatePresence,
-} from "motion/react";
+import { useMotionValue, useSpring, useScroll, motion } from "motion/react";
 import * as THREE from "three";
-import { TiberiusBust } from "./tiberius-bust";
 
 const MODEL_URL = "/3d-models/oceanus.glb";
 
@@ -21,7 +13,6 @@ useGLTF.preload(MODEL_URL);
 
 export function Oceanus3D({ className }: { className?: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
 
   // Normalized pointer (-1..1) over the 3D surface.
   const px = useMotionValue(0);
@@ -93,35 +84,13 @@ export function Oceanus3D({ className }: { className?: string }) {
         />
       </motion.div>
 
-      {/* ASCII fallback — visible until the GLB loads in, then fades out */}
-      <AnimatePresence>
-        {!ready && (
-          <motion.div
-            key="ascii"
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-0 z-10 flex items-center justify-center"
-          >
-            <TiberiusBust className="w-full" />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* 3D canvas */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: ready ? 1 : 0 }}
-        transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-        className="relative h-full w-full"
-      >
+      <div className="relative h-full w-full">
         <Canvas
           dpr={[1, 2]}
           gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
           camera={{ position: [0, 0.2, 3.2], fov: 38 }}
           style={{ background: "transparent" }}
-          onCreated={() => setTimeout(() => setReady(true), 120)}
         >
           {/* Lights — dramatic, Apple-keynote-ish */}
           <ambientLight intensity={0.35} />
@@ -171,7 +140,7 @@ export function Oceanus3D({ className }: { className?: string }) {
 
           <CameraBreath />
         </Canvas>
-      </motion.div>
+      </div>
     </div>
   );
 }
