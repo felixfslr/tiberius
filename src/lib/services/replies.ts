@@ -3,14 +3,14 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getAgent } from "@/lib/services/agents";
 import { AgentConfigSchema, type AgentConfig } from "@/lib/schemas/agent";
 import {
-  type GeneratedReply,
   type ReplyRequest,
   type ReplyResponse,
+  type TreeTrace,
 } from "@/lib/schemas/reply";
 import { retrieve } from "@/lib/retrieval/pipeline";
 import { buildPrompt } from "@/lib/generation/prompt";
-import { generateReplyOnce } from "@/lib/generation/reply";
 import { computeConfidence } from "@/lib/generation/confidence";
+import { draftReplyTree, type TreeEventHandler } from "@/lib/generation/tree";
 
 export type FullReplyResult = ReplyResponse & {
   /** For the Playground debug panel: the reranked chunks that fed the prompt. */
@@ -22,11 +22,13 @@ export type FullReplyResult = ReplyResponse & {
     source: string;
   }>;
   prompt_preview: string;
+  tree_trace: TreeTrace;
 };
 
 export async function draftReply(
   agent_id: string,
   input: ReplyRequest,
+  onEvent?: TreeEventHandler,
 ): Promise<FullReplyResult> {
   const agent = await getAgent(agent_id);
   if (!agent) throw new Error("Agent not found");
@@ -42,26 +44,28 @@ export async function draftReply(
     history: input.history,
   });
 
-  // 2. Build prompt.
-  const prompt = buildPrompt({
-    config,
-    context,
-    history: input.history,
-    trigger_message: input.trigger_message,
-  });
-
-  // 3. Generate reply.
-  let generated: GeneratedReply;
+  // 2. Tree-of-drafts (replaces single-draft path).
+  let treeResult;
   try {
-    generated = await generateReplyOnce(prompt);
+    treeResult = await draftReplyTree({
+      config,
+      context,
+      history: input.history,
+      trigger_message: input.trigger_message,
+      agent_id,
+      onEvent,
+    });
   } catch (e) {
-    consola.error("generateReply failed:", e);
+    consola.error("draftReplyTree failed:", e);
     throw new Error(
       `Reply generation failed: ${e instanceof Error ? e.message : "unknown"}`,
     );
   }
+  const generated = treeResult.final;
+  const trace = treeResult.trace;
+  const chosenStage = treeResult.chosen_stage;
 
-  // 4. Confidence.
+  // 3. Confidence (unchanged).
   const { total, breakdown, unsupported } = await computeConfidence({
     reply: generated,
     state: context.state,
@@ -79,7 +83,17 @@ export async function draftReply(
       }
     : (generated.tool_args ?? {});
 
-  // 5. Persist reply_log for eval + debug.
+  // 4. Build a representative prompt preview (no hypothesis injection — for debug only).
+  const previewPrompt = buildPrompt({
+    config,
+    context,
+    history: input.history,
+    trigger_message: input.trigger_message,
+  });
+
+  // 5. Persist reply_log for eval + debug. Trace lands in debug.tree;
+  //    chosen engagement stage is duplicated to debug.stage_engagement so the
+  //    next call's tone-polish can filter on it.
   const sb = createServiceClient();
   const retrieved_chunk_ids = context.all_ranked.map((c) => c.id);
   const { data: log, error: logErr } = await sb
@@ -98,9 +112,11 @@ export async function draftReply(
       confidence_breakdown: { ...breakdown, unsupported },
       debug: {
         stage: context.state.stage,
+        stage_engagement: chosenStage,
         intents: context.state.intents,
         entities: context.entities,
         retrieval_debug: context.debug,
+        tree: trace,
       },
     })
     .select("id")
@@ -127,6 +143,7 @@ export async function draftReply(
       score: c.score,
       source: c.source,
     })),
-    prompt_preview: prompt.userPrompt,
+    prompt_preview: previewPrompt.userPrompt,
+    tree_trace: trace,
   };
 }

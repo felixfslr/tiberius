@@ -1,12 +1,22 @@
 import type { AgentConfig } from "@/lib/schemas/agent";
 import type { Message } from "@/lib/schemas/common";
 import type { RetrievedChunk, RetrievedContext } from "@/lib/retrieval/types";
+import type { EngagementStage } from "@/lib/schemas/reply";
+
+export type StageHypothesis = {
+  label: EngagementStage;
+  probability: number;
+  /** Short strategy guidance to make the draft commit to this stance. */
+  strategy: string;
+};
 
 export type PromptInput = {
   config: AgentConfig;
   context: RetrievedContext;
   history: Message[];
   trigger_message: string;
+  /** When set, the draft is generated AS IF this engagement stage is true. */
+  stage_hypothesis?: StageHypothesis;
 };
 
 export type BuiltPrompt = {
@@ -32,7 +42,7 @@ function formatChunks(
 }
 
 export function buildPrompt(input: PromptInput): BuiltPrompt {
-  const { config, context, history, trigger_message } = input;
+  const { config, context, history, trigger_message, stage_hypothesis } = input;
   const refs = new Map<string, RetrievedChunk>();
 
   const system = `You are Tiberius, Ivy's AI sales assistant for WhatsApp and Telegram. Ivy is a crypto-native banking and payments platform for crypto exchanges (pay-ins and pay-outs, faster & cheaper than incumbents). You are in the pre-discovery phase — the goal window runs from the first message until a discovery call is held.
@@ -97,7 +107,17 @@ ${historyBlock}
 <incoming_message>
 ${trigger_message}
 </incoming_message>
-
+${
+  stage_hypothesis
+    ? `
+<stage_hypothesis>
+For this draft, write AS IF the prospect's engagement stage is: ${stage_hypothesis.label} (probability ${stage_hypothesis.probability.toFixed(2)}).
+Strategy guidance: ${stage_hypothesis.strategy}
+This is one of three parallel hypothesis-conditioned drafts. Commit fully to this stance — do not hedge across alternative stages.
+</stage_hypothesis>
+`
+    : ""
+}
 <instructions>
 1. Read <state>, <kb_facts>, <sops>, <tov_examples>, <similar_past_convos>, and <history>.
 2. Tone & style: mirror the customer. Read <incoming_message> and match their register (formal vs casual), sentence length, punctuation style, use of contractions, emoji, capitalization habits, and greetings/sign-offs. If they write two short lowercase lines, you write two short lowercase lines. If they write a formal paragraph with salutations, you match that. Treat <tov_examples> as a secondary house-style reference — borrow phrasing patterns to stay on-brand, but never copy verbatim, and customer mirroring always wins when the two conflict.

@@ -48,6 +48,90 @@ export const GeneratedReplySchema = z.object({
 });
 export type GeneratedReply = z.infer<typeof GeneratedReplySchema>;
 
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Stage-Conditional Tree-of-Drafts
+ * ────────────────────────────────────────────────────────────────────────── */
+
+export const ENGAGEMENT_STAGES = [
+  "engaged",
+  "fit_mismatch",
+  "qualifying",
+  "scheduling",
+  "ghosting",
+] as const;
+export const EngagementStageSchema = z.enum(ENGAGEMENT_STAGES);
+export type EngagementStage = z.infer<typeof EngagementStageSchema>;
+
+/** Probability distribution over the 5 engagement stages. Sum should ≈ 1. */
+export const EngagementDistributionSchema = z.object({
+  engaged: z.number().min(0).max(1),
+  fit_mismatch: z.number().min(0).max(1),
+  qualifying: z.number().min(0).max(1),
+  scheduling: z.number().min(0).max(1),
+  ghosting: z.number().min(0).max(1),
+  reasoning: z.string().max(400),
+});
+export type EngagementDistribution = z.infer<
+  typeof EngagementDistributionSchema
+>;
+
+export const CriticScoresSchema = z.object({
+  stage_appropriateness: z.number().min(0).max(1),
+  groundedness: z.number().min(0).max(1),
+  tone_match: z.number().min(0).max(1),
+  intent_match: z.number().min(0).max(1),
+  inferred_stage: EngagementStageSchema,
+  notes: z.string().max(300),
+});
+export type CriticScores = z.infer<typeof CriticScoresSchema>;
+
+export const JudgeChoiceSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal("synthesis"),
+]);
+export type JudgeChoice = z.infer<typeof JudgeChoiceSchema>;
+
+export const JudgeDecisionSchema = z.object({
+  chosen: JudgeChoiceSchema,
+  reasoning: z.string().max(600),
+  synthesis_plan: z.string().max(600).nullable(),
+});
+export type JudgeDecision = z.infer<typeof JudgeDecisionSchema>;
+
+export const TreeDraftSchema = z.object({
+  hypothesis: EngagementStageSchema,
+  hypothesis_probability: z.number().min(0).max(1),
+  reply: GeneratedReplySchema,
+  critics: CriticScoresSchema,
+  latency_ms: z.number().nonnegative(),
+});
+export type TreeDraft = z.infer<typeof TreeDraftSchema>;
+
+export const TonePolishSourceSchema = z.object({
+  reply_log_id: z.string().nullable(),
+  content: z.string(),
+  origin: z.enum(["reply_logs", "tov_examples"]),
+});
+export type TonePolishSource = z.infer<typeof TonePolishSourceSchema>;
+
+export const TreeTraceSchema = z.object({
+  distribution: EngagementDistributionSchema,
+  hypotheses: z.array(EngagementStageSchema).length(3),
+  drafts: z.array(TreeDraftSchema).length(3),
+  judge: JudgeDecisionSchema,
+  synthesis_used: z.boolean(),
+  synthesis_text: z.string().nullable(),
+  tone_polish: z.object({
+    sources: z.array(TonePolishSourceSchema),
+    before: z.string(),
+    after: z.string(),
+    skipped: z.boolean(),
+  }),
+});
+export type TreeTrace = z.infer<typeof TreeTraceSchema>;
+
 /** What the API returns to the caller. */
 export const ReplyResponseSchema = z.object({
   reply_text: z.string(),
@@ -67,5 +151,6 @@ export const ReplyResponseSchema = z.object({
   retrieved_chunk_ids: z.array(z.string()),
   reply_log_id: z.string().uuid(),
   below_threshold: z.boolean(),
+  tree_trace: TreeTraceSchema.optional(),
 });
 export type ReplyResponse = z.infer<typeof ReplyResponseSchema>;

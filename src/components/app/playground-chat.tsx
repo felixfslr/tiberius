@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, useTransition } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   AlertTriangle,
   Copy,
@@ -27,12 +27,27 @@ import { toast } from "sonner";
 import { StatusPill } from "./status-pill";
 import { cn } from "@/lib/utils";
 import type { Agent } from "@/lib/schemas/agent";
+import type {
+  CriticScores,
+  EngagementDistribution,
+  EngagementStage,
+  JudgeDecision,
+  TonePolishSource,
+  TreeTrace as TreeTraceData,
+} from "@/lib/schemas/reply";
+import {
+  TreeTrace,
+  initialTrace,
+  type DraftBranch,
+  type TraceState,
+} from "./tree-trace";
 
 type Message = {
   role: "user" | "assistant";
   content: string;
   ts?: string;
   meta?: Reply;
+  trace?: TraceState;
 };
 
 type RetrievedChunk = {
@@ -63,6 +78,7 @@ type Reply = {
   below_threshold: boolean;
   retrieved_chunks: RetrievedChunk[];
   prompt_preview: string;
+  tree_trace?: TreeTraceData;
 };
 
 export function PlaygroundChat({ agent }: { agent: Agent }) {
@@ -71,54 +87,214 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
   const [historyDraft, setHistoryDraft] = useState("");
   const [rawJson, setRawJson] = useState("");
   const [mode, setMode] = useState<"trigger" | "history" | "raw">("trigger");
-  const [pending, startTransition] = useTransition();
+  const [streaming, setStreaming] = useState(false);
+  const [liveTrace, setLiveTrace] = useState<TraceState | null>(null);
   const [lastReply, setLastReply] = useState<Reply | null>(null);
   const [error, setError] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const traceRef = useRef<TraceState | null>(null);
 
-  function runReply(body: Record<string, unknown>, optimisticUser?: string) {
+  function applyEvent(event: { type: string; data: unknown }) {
+    setLiveTrace((prev) => {
+      const next: TraceState = prev ? { ...prev } : initialTrace();
+      switch (event.type) {
+        case "retrieval_done": {
+          const d = event.data as { num_chunks: number };
+          next.retrievalDone = true;
+          next.numChunks = d.num_chunks;
+          break;
+        }
+        case "stage_distribution": {
+          const d = event.data as {
+            distribution: EngagementDistribution;
+            top3: Array<{ stage: EngagementStage; probability: number }>;
+          };
+          next.distribution = d.distribution;
+          next.top3 = d.top3;
+          // Pre-seed branches so the UI shows three pending rows immediately.
+          next.branches = [0, 1, 2].map((i) => {
+            const t = d.top3[i];
+            if (!t) return null;
+            const b: DraftBranch = {
+              hypothesis: t.stage,
+              probability: t.probability,
+              status: "pending",
+            };
+            return b;
+          }) as TraceState["branches"];
+          break;
+        }
+        case "draft_started": {
+          const d = event.data as {
+            index: 0 | 1 | 2;
+            hypothesis: EngagementStage;
+            probability: number;
+          };
+          const updated = [...next.branches] as TraceState["branches"];
+          updated[d.index] = {
+            hypothesis: d.hypothesis,
+            probability: d.probability,
+            status: "drafting",
+          };
+          next.branches = updated;
+          break;
+        }
+        case "draft_completed": {
+          const d = event.data as {
+            index: 0 | 1 | 2;
+            hypothesis: EngagementStage;
+            reply_text: string;
+            latency_ms: number;
+          };
+          const updated = [...next.branches] as TraceState["branches"];
+          const existing = updated[d.index];
+          updated[d.index] = {
+            hypothesis: d.hypothesis,
+            probability: existing?.probability ?? 0,
+            status: "done",
+            reply_text: d.reply_text,
+            latency_ms: d.latency_ms,
+            critics: existing?.critics,
+          };
+          next.branches = updated;
+          break;
+        }
+        case "critics_completed": {
+          const d = event.data as { index: 0 | 1 | 2; scores: CriticScores };
+          const updated = [...next.branches] as TraceState["branches"];
+          const existing = updated[d.index];
+          if (existing) {
+            updated[d.index] = { ...existing, critics: d.scores };
+          }
+          next.branches = updated;
+          break;
+        }
+        case "judge_decision": {
+          const d = event.data as JudgeDecision;
+          next.judge = d;
+          if (d.chosen === 0 || d.chosen === 1 || d.chosen === 2) {
+            next.chosenIndex = d.chosen;
+          }
+          break;
+        }
+        case "synthesis_completed": {
+          const d = event.data as { reply_text: string };
+          next.synthesisText = d.reply_text;
+          break;
+        }
+        case "tone_polish_done": {
+          const d = event.data as {
+            sources: TonePolishSource[];
+            before: string;
+            after: string;
+            skipped: boolean;
+          };
+          next.tonePolish = d;
+          break;
+        }
+        case "final_reply": {
+          next.finalDone = true;
+          break;
+        }
+        case "error": {
+          const d = event.data as { message: string; phase: string };
+          next.errors = [...next.errors, `[${d.phase}] ${d.message}`];
+          break;
+        }
+      }
+      traceRef.current = next;
+      return next;
+    });
+  }
+
+  async function runReply(
+    body: Record<string, unknown>,
+    optimisticUser?: string,
+  ) {
     setError(null);
-    startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agent.id}/reply`, {
+    setStreaming(true);
+    setLiveTrace(initialTrace());
+    traceRef.current = initialTrace();
+
+    let finalReply: Reply | null = null;
+
+    try {
+      const res = await fetch(`/api/v1/agents/${agent.id}/reply?stream=1`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify(body),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data?.error?.message ?? "generation failed");
+      if (!res.ok || !res.body) {
+        const fallback = await safeJson(res);
+        setError(fallback?.error?.message ?? `HTTP ${res.status}`);
         return;
       }
-      const reply = data.data as Reply;
-      setLastReply(reply);
-      setHistory((prev) => {
-        const next: Message[] = [...prev];
-        if (
-          optimisticUser &&
-          !(
-            next.length > 0 &&
-            next[next.length - 1]!.role === "user" &&
-            next[next.length - 1]!.content === optimisticUser
-          )
-        ) {
-          next.push({
-            role: "user",
-            content: optimisticUser,
-            ts: new Date().toISOString(),
-          });
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // SSE frames are separated by a blank line.
+        let sep: number;
+        while ((sep = buffer.indexOf("\n\n")) !== -1) {
+          const frame = buffer.slice(0, sep);
+          buffer = buffer.slice(sep + 2);
+          const event = parseSseFrame(frame);
+          if (!event) continue;
+          if (event.type === "final_reply") {
+            finalReply = event.data as Reply;
+          }
+          applyEvent(event);
         }
-        next.push({
-          role: "assistant",
-          content: reply.reply_text,
-          ts: new Date().toISOString(),
-          meta: reply,
+      }
+
+      if (finalReply) {
+        setLastReply(finalReply);
+        const completedTrace = traceRef.current;
+        setHistory((prev) => {
+          const next: Message[] = [...prev];
+          if (
+            optimisticUser &&
+            !(
+              next.length > 0 &&
+              next[next.length - 1]!.role === "user" &&
+              next[next.length - 1]!.content === optimisticUser
+            )
+          ) {
+            next.push({
+              role: "user",
+              content: optimisticUser,
+              ts: new Date().toISOString(),
+            });
+          }
+          next.push({
+            role: "assistant",
+            content: finalReply!.reply_text,
+            ts: new Date().toISOString(),
+            meta: finalReply!,
+            trace: completedTrace ?? undefined,
+          });
+          return next;
         });
-        return next;
-      });
-      requestAnimationFrame(() =>
-        chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
-      );
-    });
+        requestAnimationFrame(() =>
+          chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+        );
+      } else {
+        setError("Stream ended without a final reply");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "stream failed");
+    } finally {
+      setStreaming(false);
+    }
   }
 
   function onGenerate() {
@@ -243,8 +419,16 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
               </div>
             ) : null}
             {history.map((m, i) => (
-              <MessageBubble key={i} message={m} agent={agent} />
+              <div key={i} className="flex flex-col gap-3">
+                <MessageBubble message={m} agent={agent} />
+                {m.role === "assistant" && m.trace ? (
+                  <TreeTrace trace={m.trace} active={false} />
+                ) : null}
+              </div>
             ))}
+            {streaming && liveTrace ? (
+              <TreeTrace trace={liveTrace} active={true} />
+            ) : null}
             {history.length > 0 &&
             history[history.length - 1]!.role === "assistant" &&
             history[history.length - 1]!.meta ? (
@@ -260,9 +444,9 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
                 }}
               />
             ) : null}
-            {pending ? (
+            {streaming && !liveTrace ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" /> drafting…
+                <Loader2 className="h-4 w-4 animate-spin" /> starting…
               </div>
             ) : null}
             {error ? (
@@ -300,12 +484,12 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
                   }}
                   rows={2}
                   placeholder="Paste the prospect's incoming message…"
-                  disabled={pending}
+                  disabled={streaming}
                   className="flex-1 resize-none"
                 />
                 <Button
                   onClick={onGenerate}
-                  disabled={pending || !input.trim()}
+                  disabled={streaming || !input.trim()}
                 >
                   <Sparkles className="mr-2 h-4 w-4" /> Generate
                 </Button>
@@ -319,7 +503,7 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
                   className="font-mono text-xs"
                 />
                 <div className="flex justify-end">
-                  <Button onClick={onGenerate} disabled={pending}>
+                  <Button onClick={onGenerate} disabled={streaming}>
                     <Sparkles className="mr-2 h-4 w-4" /> Generate from history
                   </Button>
                 </div>
@@ -333,7 +517,7 @@ export function PlaygroundChat({ agent }: { agent: Agent }) {
                   className="font-mono text-xs"
                 />
                 <div className="flex justify-end">
-                  <Button onClick={onGenerate} disabled={pending}>
+                  <Button onClick={onGenerate} disabled={streaming}>
                     <Sparkles className="mr-2 h-4 w-4" /> Generate from JSON
                   </Button>
                 </div>
@@ -773,4 +957,32 @@ function ChunkCard({
       ) : null}
     </div>
   );
+}
+
+/* ─── SSE helpers ─────────────────────────────────────────────────────── */
+
+async function safeJson(
+  res: Response,
+): Promise<{ error?: { message?: string } } | null> {
+  try {
+    return (await res.json()) as { error?: { message?: string } };
+  } catch {
+    return null;
+  }
+}
+
+function parseSseFrame(frame: string): { type: string; data: unknown } | null {
+  let eventName = "message";
+  const dataLines: string[] = [];
+  for (const raw of frame.split("\n")) {
+    const line = raw.replace(/\r$/, "");
+    if (line.startsWith("event:")) eventName = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+  }
+  if (dataLines.length === 0) return null;
+  try {
+    return { type: eventName, data: JSON.parse(dataLines.join("\n")) };
+  } catch {
+    return null;
+  }
 }
