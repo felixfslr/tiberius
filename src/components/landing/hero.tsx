@@ -19,7 +19,7 @@ const Oceanus3D = dynamic(
 
 export function Hero() {
   return (
-    <section className="relative isolate overflow-hidden pt-28 pb-20 md:pt-36 md:pb-28">
+    <section className="relative isolate pt-28 pb-20 md:pt-36 md:pb-28">
       {/* Ambient backdrop */}
       <div
         aria-hidden

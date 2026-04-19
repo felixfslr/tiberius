@@ -190,9 +190,18 @@ function Oceanus({
   };
   const ref = useRef<THREE.Group>(null);
 
-  // Normalize model size + center once.
+  // Normalize model size + center once, and flip right-side-up. The source
+  // GLB authors sit with Y pointing down, which reads as "upside down" in our
+  // scene — rotate 180° around Z to put the head on top.
   useEffect(() => {
     if (!scene) return;
+
+    // Reset any previous orientation work (HMR safety).
+    scene.rotation.set(Math.PI, 0, 0);
+    scene.position.set(0, 0, 0);
+    scene.scale.set(1, 1, 1);
+    scene.updateMatrixWorld(true);
+
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
@@ -201,6 +210,8 @@ function Oceanus({
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
     const scale = 2.2 / maxDim;
     scene.scale.setScalar(scale);
+    // Re-compute the bounding center in post-scale world coords so the model
+    // sits nicely at the origin regardless of which direction we flipped.
     scene.position.sub(center.multiplyScalar(scale));
 
     // Nudge material for a softer, more premium look.
@@ -216,7 +227,7 @@ function Oceanus({
     });
   }, [scene]);
 
-  useFrame((_state, delta) => {
+  useFrame((state, delta) => {
     if (!ref.current) return;
     const t = performance.now() / 1000;
 
@@ -224,18 +235,21 @@ function Oceanus({
     const py = pointerY.get();
     const sp = scroll.get();
 
+    // Ease the scroll signal so the zoom-in ramps up at the end, not linearly.
+    // Feels more like a camera crash-in right before the next section.
+    const spEased = sp * sp * (3 - 2 * sp); // smoothstep
+
     // Base idle auto-rotation (slow, continuous).
     const autoY = t * 0.18;
 
-    // Scroll contributes an extra 180° as the hero leaves the viewport — feels
-    // like the statue turns to follow you off the page.
-    const scrollY = sp * Math.PI;
+    // Scroll contributes extra yaw — half a turn as the hero leaves the
+    // viewport, so the statue "follows" the reader.
+    const scrollY = spEased * Math.PI;
 
     // Mouse parallax lightly steers yaw/pitch.
     const targetY = autoY + scrollY + px * 0.35;
-    const targetX = -py * 0.2 + sp * 0.12;
+    const targetX = -py * 0.2 + spEased * 0.18;
 
-    // Spring-like blend to avoid jerky frames.
     ref.current.rotation.y = THREE.MathUtils.damp(
       ref.current.rotation.y,
       targetY,
@@ -249,10 +263,21 @@ function Oceanus({
       delta,
     );
 
-    // Subtle zoom-in as user scrolls.
-    const targetScale = 1 + sp * 0.18;
+    // Dramatic crash-in scale: up to +55% at end of hero.
+    const targetScale = 1 + spEased * 0.55;
     ref.current.scale.setScalar(
       THREE.MathUtils.damp(ref.current.scale.x, targetScale, 6, delta),
+    );
+
+    // Camera dolly — pull the lens from 3.2 to 1.35 as user scrolls the hero
+    // away, a true telescopic zoom into the bust's face right before the next
+    // section takes over.
+    const targetZ = 3.2 - spEased * 1.85;
+    state.camera.position.z = THREE.MathUtils.damp(
+      state.camera.position.z,
+      targetZ,
+      5,
+      delta,
     );
   });
 
