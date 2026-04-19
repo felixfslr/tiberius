@@ -5,29 +5,29 @@ import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Renders the Claude Desktop / ChatGPT config snippet so the user can paste it
- * into their MCP client. Uses `tib_…` as a placeholder — the user substitutes
- * their own key that they copied at creation time.
+ * Copy box for an MCP config snippet. In `url`-only mode renders the plain
+ * URL (what Claude Desktop's Custom Connector dialog asks for); in `json`
+ * mode renders the full `mcpServers` block for config-file based clients.
+ * Uses `tib_…` as the key placeholder — the user substitutes their own.
  */
-export function McpConnectSnippet({
-  serverName,
-  url,
-}: {
-  serverName: string;
-  url: string;
-}) {
-  const snippet = JSON.stringify(
-    {
-      mcpServers: {
-        [serverName]: {
-          url,
-          headers: { Authorization: "Bearer tib_…" },
-        },
-      },
-    },
-    null,
-    2,
-  );
+export function McpConnectSnippet(
+  props: { url: string } | { url: string; serverName: string },
+) {
+  const snippet =
+    "serverName" in props
+      ? JSON.stringify(
+          {
+            mcpServers: {
+              [props.serverName]: {
+                url: props.url,
+                headers: { Authorization: "Bearer tib_…" },
+              },
+            },
+          },
+          null,
+          2,
+        )
+      : props.url;
 
   const [copied, setCopied] = useState(false);
   async function copy() {

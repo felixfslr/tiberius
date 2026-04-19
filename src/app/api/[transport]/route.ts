@@ -9,8 +9,13 @@ import type { McpAuthExtra } from "@/lib/mcp/scope";
  * Tiberius MCP server — Streamable HTTP transport.
  *
  * Mounted at `/api/mcp`. Authentication is the same bearer-token API key
- * (`Authorization: Bearer tib_…`) that the REST API accepts. Keys can be
- * agent-pinned (see only their agent) or workspace-scope (see every agent).
+ * (`tib_…`) that the REST API accepts, supplied either as:
+ *   - `Authorization: Bearer tib_…` header (standard; used by REST, mcp-remote)
+ *   - `?key=tib_…` query param (fallback for Claude Desktop's Custom Connector
+ *     dialog which only has a URL field)
+ *
+ * Keys can be agent-pinned (see only their agent) or workspace-scope (see
+ * every agent).
  */
 
 const base = createMcpHandler(
@@ -30,11 +35,19 @@ const base = createMcpHandler(
 
 const handler = withMcpAuth(
   base,
-  async (_req, bearerToken) => {
-    if (!bearerToken) return undefined;
-    // Re-wrap the bearer into a Request shape verifyApiKey understands.
+  async (req, bearerToken) => {
+    // Header first, query string as fallback for URL-only clients.
+    let token = bearerToken;
+    if (!token) {
+      try {
+        token = new URL(req.url).searchParams.get("key") ?? undefined;
+      } catch {
+        token = undefined;
+      }
+    }
+    if (!token) return undefined;
     const probe = new Request("https://mcp.local/", {
-      headers: { authorization: `Bearer ${bearerToken}` },
+      headers: { authorization: `Bearer ${token}` },
     });
     const auth = await verifyApiKey(probe);
     if (!auth) return undefined;
@@ -44,7 +57,7 @@ const handler = withMcpAuth(
       key_name: auth.key_name,
     };
     const info: AuthInfo = {
-      token: bearerToken,
+      token,
       clientId: auth.key_id,
       scopes: auth.agent_id === null ? ["workspace"] : ["agent"],
       extra: extra as unknown as Record<string, unknown>,

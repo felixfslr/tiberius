@@ -119,33 +119,45 @@ export default async function McpPage() {
 
       <section className="space-y-3">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold">Claude Desktop</h2>
+          <h2 className="text-sm font-semibold">
+            Claude Desktop — Custom Connector
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Settings → Developer → Edit Config. Paste this in, replace{" "}
-            <code className="font-mono text-xs">tib_…</code> with the key you
-            just copied, then restart Claude Desktop.
+            Settings → Connectors → Custom Connector hinzufügen. Name frei
+            wählen (z.B. <code className="font-mono text-xs">Tiberius</code>),
+            als Remote MCP Server URL den Link unten einfügen — dein Key geht
+            als Query-Param mit. Nach dem Speichern erscheinen die 7 Tools im
+            Tool-Menü.
           </p>
         </div>
-        <McpConnectSnippet serverName="tiberius" url={mcpUrl} />
+        <McpConnectSnippet url={`${mcpUrl}?key=tib_…`} />
+        <p className="text-xs text-muted-foreground">
+          Die Query-Param-Auth ist ein pragmatischer Shortcut, weil Claude
+          Desktop im Basic-Modus kein Header-Feld anbietet. Produktionsreifer
+          OAuth-Flow folgt später.
+        </p>
       </section>
 
       <section className="space-y-3">
         <div className="space-y-1">
-          <h2 className="text-sm font-semibold">ChatGPT / Cursor / Windsurf</h2>
+          <h2 className="text-sm font-semibold">
+            ChatGPT / Cursor / Windsurf / REST
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Any client that speaks Streamable HTTP MCP. Add a remote server at{" "}
+            Clients, die Custom-Header können, nehmen lieber den sauberen Weg:
+            URL{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               {mcpUrl}
             </code>{" "}
-            with header{" "}
+            mit Header{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               Authorization: Bearer tib_…
             </code>
-            . Stdio-only clients can wrap it with{" "}
+            . Stdio-only MCP-Clients können mit{" "}
             <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
               npx mcp-remote
-            </code>
-            .
+            </code>{" "}
+            wrappen.
           </p>
         </div>
       </section>
