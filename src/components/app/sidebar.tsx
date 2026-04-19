@@ -13,6 +13,7 @@ import {
   MessageSquare,
   MessageSquareWarning,
   Moon,
+  Plug,
   Sparkles,
   Sun,
 } from "lucide-react";
@@ -74,6 +75,13 @@ export function Sidebar({
           icon={<Bot className="h-[18px] w-[18px]" />}
         >
           Agents
+        </SidebarLink>
+        <SidebarLink
+          href="/app/mcp"
+          active={pathname.startsWith("/app/mcp")}
+          icon={<Plug className="h-[18px] w-[18px]" />}
+        >
+          MCP
         </SidebarLink>
 
         {activeAgent ? (

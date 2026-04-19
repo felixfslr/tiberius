@@ -17,7 +17,16 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 
-export function CreateKeyForm({ agentId }: { agentId: string }) {
+export function CreateKeyForm({
+  agentId,
+  workspace,
+  label,
+}: {
+  /** Omit for a workspace-scope key (MCP multi-agent). */
+  agentId?: string;
+  workspace?: boolean;
+  label?: string;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -25,10 +34,14 @@ export function CreateKeyForm({ agentId }: { agentId: string }) {
   const [copied, setCopied] = useState(false);
   const [pending, startTransition] = useTransition();
 
+  const endpoint = workspace
+    ? "/api/v1/keys"
+    : `/api/v1/agents/${agentId}/keys`;
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const res = await fetch(`/api/v1/agents/${agentId}/keys`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -60,7 +73,7 @@ export function CreateKeyForm({ agentId }: { agentId: string }) {
   return (
     <Dialog open={open} onOpenChange={(o) => (o ? setOpen(true) : onClose())}>
       <DialogTrigger render={<Button />}>
-        <Plus className="mr-2 h-4 w-4" /> Create key
+        <Plus className="mr-2 h-4 w-4" /> {label ?? "Create key"}
       </DialogTrigger>
       <DialogContent>
         {!created ? (
@@ -68,7 +81,8 @@ export function CreateKeyForm({ agentId }: { agentId: string }) {
             <DialogHeader>
               <DialogTitle>Create API key</DialogTitle>
               <DialogDescription>
-                You&apos;ll see the key once, right after creation. Copy it somewhere safe.
+                You&apos;ll see the key once, right after creation. Copy it
+                somewhere safe.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={onSubmit} className="flex flex-col gap-4">

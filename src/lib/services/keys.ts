@@ -3,7 +3,8 @@ import { generateApiKey } from "@/lib/auth/api-key";
 
 export type ApiKeyRow = {
   id: string;
-  agent_id: string;
+  /** null = workspace key; used by MCP clients that talk to multiple agents. */
+  agent_id: string | null;
   name: string;
   key_prefix: string;
   last_used_at: string | null;
@@ -23,7 +24,21 @@ export async function listKeys(agent_id: string): Promise<ApiKeyRow[]> {
   return data ?? [];
 }
 
-export async function createKey(agent_id: string, name: string): Promise<ApiKeyCreated> {
+export async function listWorkspaceKeys(): Promise<ApiKeyRow[]> {
+  const sb = createServiceClient();
+  const { data, error } = await sb
+    .from("api_keys")
+    .select("id, agent_id, name, key_prefix, last_used_at, created_at")
+    .is("agent_id", null)
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  return data ?? [];
+}
+
+export async function createKey(
+  agent_id: string | null,
+  name: string,
+): Promise<ApiKeyCreated> {
   const { plaintext, prefix, hash } = generateApiKey();
   const sb = createServiceClient();
   const { data, error } = await sb

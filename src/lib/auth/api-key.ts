@@ -3,9 +3,18 @@ import { createServiceClient } from "@/lib/supabase/service";
 
 const PREFIX = "tib_";
 
-export type ApiKeyAuth = { agent_id: string; key_id: string; key_name: string };
+export type ApiKeyAuth = {
+  /** null = workspace-scope key (can act on any agent). String = agent-pinned key. */
+  agent_id: string | null;
+  key_id: string;
+  key_name: string;
+};
 
-export function generateApiKey(): { plaintext: string; prefix: string; hash: string } {
+export function generateApiKey(): {
+  plaintext: string;
+  prefix: string;
+  hash: string;
+} {
   const raw = randomBytes(24).toString("base64url");
   const plaintext = `${PREFIX}${raw}`;
   const prefix = plaintext.slice(0, 8);
@@ -18,7 +27,8 @@ export function hashApiKey(plaintext: string): string {
 }
 
 function readBearer(req: Request): string | null {
-  const hdr = req.headers.get("authorization") ?? req.headers.get("Authorization");
+  const hdr =
+    req.headers.get("authorization") ?? req.headers.get("Authorization");
   if (!hdr) return null;
   const m = hdr.match(/^Bearer\s+(.+)$/i);
   return m ? m[1].trim() : null;
@@ -37,9 +47,12 @@ export async function verifyApiKey(req: Request): Promise<ApiKeyAuth | null> {
     .maybeSingle();
   if (error || !data) return null;
   // fire-and-forget last-used timestamp
-  sb.from("api_keys").update({ last_used_at: new Date().toISOString() }).eq("id", data.id).then(
-    () => void 0,
-    () => void 0,
-  );
+  sb.from("api_keys")
+    .update({ last_used_at: new Date().toISOString() })
+    .eq("id", data.id)
+    .then(
+      () => void 0,
+      () => void 0,
+    );
   return { agent_id: data.agent_id, key_id: data.id, key_name: data.name };
 }

@@ -11,8 +11,9 @@ export async function GET(req: NextRequest) {
   if (auth instanceof Response) return auth;
   try {
     const agents = await listAgents();
-    // API-key scope: only expose the one agent the key belongs to.
-    if (auth.scope === "api-key") {
+    // Agent-pinned API key: only expose the one agent the key belongs to.
+    // Workspace-scope key (agent_id === null): see every agent.
+    if (auth.scope === "api-key" && auth.apiKey.agent_id !== null) {
       return ok(agents.filter((a) => a.id === auth.apiKey.agent_id));
     }
     return ok(agents);
