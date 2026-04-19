@@ -15,6 +15,7 @@ import { RevokeKeyButton } from "@/components/app/revoke-key-button";
 import { CodeBlock } from "@/components/app/code-block";
 import { StatusPill } from "@/components/app/status-pill";
 import { relativeFromNow } from "@/lib/format/time";
+import { ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -41,12 +42,21 @@ export default async function ApiKeysPage({
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
-      <div>
+      <div className="flex items-start justify-between gap-6">
         <p className="max-w-2xl text-sm text-muted-foreground">
           Bearer tokens for external callers — n8n, Make, internal scripts. The
           full value is shown exactly once when created; after that only the
           prefix is visible. Scopes limit which endpoints a key can hit.
         </p>
+        <a
+          href="/api/docs/ui"
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+        >
+          Full API reference
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
       </div>
 
       <section className="space-y-3">
