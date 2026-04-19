@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FileText, Network, Upload } from "lucide-react";
+import { FileText, Upload } from "lucide-react";
 import { UploadDialog } from "./upload-dialog";
 import { TypeChip } from "./type-chip";
 import { cn } from "@/lib/utils";
@@ -44,23 +44,6 @@ export function KnowledgeTopStrip({
           </button>
         }
       />
-
-      <Link
-        href={`/agents/${agentId}/knowledge/graph`}
-        className="group flex h-28 w-56 shrink-0 flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:border-primary/30 hover:shadow-md"
-      >
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-muted-foreground transition group-hover:bg-primary/10 group-hover:text-primary">
-          <Network className="h-4 w-4" />
-        </div>
-        <div className="space-y-0.5">
-          <div className="text-sm font-semibold tracking-tight">
-            Knowledge graph
-          </div>
-          <div className="text-[11px] text-muted-foreground">
-            Stage · intent · entities
-          </div>
-        </div>
-      </Link>
 
       {files.map((f) => (
         <Link

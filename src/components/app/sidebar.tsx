@@ -13,7 +13,6 @@ import {
   MessageSquare,
   MessageSquareWarning,
   Moon,
-  Network,
   Sparkles,
   Sun,
 } from "lucide-react";
@@ -95,24 +94,12 @@ export function Sidebar({
             </SidebarLink>
             <SidebarLink
               href={`/agents/${activeAgent.id}/knowledge`}
-              active={
-                pathname.startsWith(`/agents/${activeAgent.id}/knowledge`) &&
-                !pathname.startsWith(
-                  `/agents/${activeAgent.id}/knowledge/graph`,
-                )
-              }
+              active={pathname.startsWith(
+                `/agents/${activeAgent.id}/knowledge`,
+              )}
               icon={<BookOpen className="h-[18px] w-[18px]" />}
             >
               Knowledge
-            </SidebarLink>
-            <SidebarLink
-              href={`/agents/${activeAgent.id}/knowledge/graph`}
-              active={pathname.startsWith(
-                `/agents/${activeAgent.id}/knowledge/graph`,
-              )}
-              icon={<Network className="h-[18px] w-[18px]" />}
-            >
-              Graph
             </SidebarLink>
             <SidebarLink
               href={`/agents/${activeAgent.id}/playground`}

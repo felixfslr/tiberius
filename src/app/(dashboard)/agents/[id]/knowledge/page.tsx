@@ -8,12 +8,13 @@ import {
   getFolderPath,
   listFolders,
 } from "@/lib/services/folders";
+import { buildRichGraph } from "@/lib/services/graph-rich";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buttonVariants } from "@/components/ui/button";
 import { CreateFolderDialog } from "@/components/app/create-folder-dialog";
 import { FolderTable } from "@/components/app/folder-table";
 import { KnowledgeTopStrip } from "@/components/app/knowledge-top-strip";
-import { RecentFilesList } from "@/components/app/recent-files-list";
+import { KnowledgeGraphEmbed } from "@/components/app/knowledge-graph-embed";
 import { FolderDetailView } from "@/components/app/folder-detail-view";
 
 export const dynamic = "force-dynamic";
@@ -34,11 +35,11 @@ export default async function KnowledgePage({
   // Root view
   // ========================================================
   if (!folder) {
-    const [rootFolders, counts, recent, allFiles] = await Promise.all([
+    const [rootFolders, counts, recent, graphData] = await Promise.all([
       listFolders(id, null),
       getFolderCounts(id),
       listFiles(id).then((fs) => fs.slice(0, 6)),
-      listFiles(id).then((fs) => fs.slice(0, 10)),
+      buildRichGraph(id),
     ]);
     const subCounts = await countSubfolders(
       id,
@@ -88,18 +89,9 @@ export default async function KnowledgePage({
 
         <section className="space-y-3">
           <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-            Recent files
+            Knowledge graph
           </h2>
-          <RecentFilesList
-            agentId={id}
-            files={allFiles.map((f) => ({
-              id: f.id,
-              filename: f.filename,
-              file_type: f.file_type,
-              status: f.status,
-              uploaded_at: f.uploaded_at,
-            }))}
-          />
+          <KnowledgeGraphEmbed data={graphData} agentName={agent.name} />
         </section>
       </div>
     );
