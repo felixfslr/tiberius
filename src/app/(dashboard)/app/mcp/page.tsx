@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import { listWorkspaceKeys } from "@/lib/services/keys";
 import {
   Table,
@@ -20,10 +21,13 @@ export const dynamic = "force-dynamic";
 export default async function McpPage() {
   const keys = await listWorkspaceKeys();
 
-  const host = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "http://localhost:3007";
-  const mcpUrl = `${host}/api/mcp`;
+  const h = await headers();
+  const reqHost =
+    h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3007";
+  const proto =
+    h.get("x-forwarded-proto") ??
+    (reqHost.startsWith("localhost") ? "http" : "https");
+  const mcpUrl = `${proto}://${reqHost}/api/mcp`;
 
   return (
     <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-8">
