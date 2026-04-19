@@ -1,6 +1,6 @@
 # Tiberius
 
-[Pitch Deck (PDF)](presentation/260420_asktiberius%20%E2%80%94%20deck.pdf)
+[Pitch Deck (PDF)](presentation/asktiberius.pdf)
 
 ## Live Demo
 
