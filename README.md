@@ -9,10 +9,10 @@ reply with a real confidence score.
 
 **Live**
 
-- App & Playground: https://tiberius-nu.vercel.app
-- API base: `https://tiberius-nu.vercel.app/api/v1`
-- Swagger UI: https://tiberius-nu.vercel.app/api/docs/ui
-- OpenAPI JSON: https://tiberius-nu.vercel.app/api/docs
+- App & Playground: https://asktiberius.de
+- API base: `https://asktiberius.de/api/v1`
+- Swagger UI: https://asktiberius.de/api/docs/ui
+- OpenAPI JSON: https://asktiberius.de/api/docs
 - Default agent id (seeded "Ivy Sales Pre-Discovery"): `ae3becab-aac4-47ca-b17a-42ed39de4650`
 - Worker: PM2 process `tiberius-worker` on the Hetzner dev box (see below).
 
@@ -76,7 +76,7 @@ All external requests need `Authorization: Bearer <api_key>`. Create keys in the
 UI at `/agents/<id>/api-keys` — the value is shown exactly once.
 
 ```bash
-export TIB_BASE=https://tiberius-nu.vercel.app
+export TIB_BASE=https://asktiberius.de
 export TIB_KEY=tib_…
 export TIB_AGENT=ae3becab-aac4-47ca-b17a-42ed39de4650   # the seeded default
 ```

@@ -89,7 +89,7 @@ When the user wants to see a change before it goes live:
 3. Tell the user the URL — http://localhost:3007. If that's taken for some reason, read the actual port from the dev server output.
 4. Edit files; Next.js hot-reloads in the browser automatically. No manual refresh needed.
 5. If the user wants to share a preview with someone else without shipping to prod: push to a branch (e.g. `preview/<topic>`) — Vercel auto-deploys each branch to its own URL.
-6. When the user says "ship it" / "push to main", commit and push. Prod is at https://tiberius-nu.vercel.app.
+6. When the user says "ship it" / "push to main", commit and push. Prod is at https://asktiberius.de (Vercel default URL: https://tiberius-nu.vercel.app).
 
 ### Shipping changes
 

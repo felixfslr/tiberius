@@ -8,7 +8,7 @@ import { Reveal } from "./reveal";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const CURL = `curl -X POST https://tiberius-nu.vercel.app/api/v1/agents/$ID/reply \\
+const CURL = `curl -X POST https://asktiberius.de/api/v1/agents/$ID/reply \\
   -H "Authorization: Bearer $KEY" \\
   -H "Content-Type: application/json" \\
   -d '{ "trigger_message": "What are you charging per USDC txn?" }'`;

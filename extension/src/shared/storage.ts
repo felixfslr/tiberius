@@ -8,14 +8,16 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  apiBaseUrl: "https://tiberius-nu.vercel.app",
+  apiBaseUrl: "https://asktiberius.de",
   apiKey: "",
   agentId: "",
   behavior: "auto_insert",
 };
 
 export async function getSettings(): Promise<Settings> {
-  const raw = (await chrome.storage.sync.get(DEFAULT_SETTINGS)) as Partial<Settings>;
+  const raw = (await chrome.storage.sync.get(
+    DEFAULT_SETTINGS,
+  )) as Partial<Settings>;
   return { ...DEFAULT_SETTINGS, ...raw };
 }
 

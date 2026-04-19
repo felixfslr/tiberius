@@ -15,19 +15,38 @@
       <form id="settings-form">
         <label>
           <span>API base URL</span>
-          <input type="url" name="apiBaseUrl" required placeholder="https://tiberius-nu.vercel.app" />
+          <input
+            type="url"
+            name="apiBaseUrl"
+            required
+            placeholder="https://asktiberius.de"
+          />
         </label>
 
         <label>
           <span>Agent ID</span>
-          <input type="text" name="agentId" required placeholder="uuid" autocomplete="off" />
-          <small>Copy from <code>/agents/&lt;id&gt;/api-keys</code> page.</small>
+          <input
+            type="text"
+            name="agentId"
+            required
+            placeholder="uuid"
+            autocomplete="off"
+          />
+          <small
+            >Copy from <code>/agents/&lt;id&gt;/api-keys</code> page.</small
+          >
         </label>
 
         <label>
           <span>API key</span>
           <div class="secret-row">
-            <input type="password" name="apiKey" required placeholder="tib_..." autocomplete="off" />
+            <input
+              type="password"
+              name="apiKey"
+              required
+              placeholder="tib_..."
+              autocomplete="off"
+            />
             <button type="button" id="toggle-key" class="ghost">show</button>
           </div>
         </label>
@@ -36,11 +55,16 @@
           <legend>When the agent produces a reply</legend>
           <label class="radio">
             <input type="radio" name="behavior" value="auto_insert" />
-            <span><strong>Insert directly</strong> — modal only if confidence is below threshold.</span>
+            <span
+              ><strong>Insert directly</strong> — modal only if confidence is
+              below threshold.</span
+            >
           </label>
           <label class="radio">
             <input type="radio" name="behavior" value="always_preview" />
-            <span><strong>Always preview</strong> — show modal every time.</span>
+            <span
+              ><strong>Always preview</strong> — show modal every time.</span
+            >
           </label>
         </fieldset>
 

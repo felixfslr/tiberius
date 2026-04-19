@@ -29,6 +29,7 @@
     }
   ],
   "host_permissions": [
+    "https://asktiberius.de/*",
     "https://tiberius-nu.vercel.app/*",
     "http://localhost:3007/*"
   ],

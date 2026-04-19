@@ -23,12 +23,12 @@ Then in Chrome:
 
 In the options page, fill in:
 
-- **API base URL** — `https://tiberius-nu.vercel.app` (prod) or `http://localhost:3007` (dev).
+- **API base URL** — `https://asktiberius.de` (prod) or `http://localhost:3007` (dev).
 - **Agent ID** — UUID from your agent's dashboard (`/agents/<id>`).
 - **API key** — generate at `/agents/<id>/api-keys`. Key is pinned to that one agent.
 - **Behavior**:
-  - *Insert directly* — auto-insert the draft; modal only appears if the agent returns `below_threshold`.
-  - *Always preview* — modal opens every time so you can edit before inserting.
+  - _Insert directly_ — auto-insert the draft; modal only appears if the agent returns `below_threshold`.
+  - _Always preview_ — modal opens every time so you can edit before inserting.
 
 Click **Test connection** — green means the API key is valid.
 

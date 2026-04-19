@@ -15,6 +15,7 @@ import { RevokeKeyButton } from "@/components/app/revoke-key-button";
 import { CodeBlock } from "@/components/app/code-block";
 import { StatusPill } from "@/components/app/status-pill";
 import { relativeFromNow } from "@/lib/format/time";
+import { getAppUrl } from "@/lib/urls";
 import { ExternalLink } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -29,9 +30,7 @@ export default async function ApiKeysPage({
   if (!agent) notFound();
   const keys = await listKeys(id);
 
-  const host = process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "http://localhost:3007";
+  const host = getAppUrl();
   const curl = `curl -X POST "${host}/api/v1/agents/${id}/reply" \\
   -H "Authorization: Bearer tib_live_…" \\
   -H "Content-Type: application/json" \\
