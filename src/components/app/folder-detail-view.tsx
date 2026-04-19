@@ -421,7 +421,7 @@ export function FolderDetailView({
                                 Move to folder
                               </DropdownMenuLabel>
                               <DropdownMenuItem
-                                onSelect={() => onFileMove(r.id, null)}
+                                onClick={() => onFileMove(r.id, null)}
                                 disabled={r.folder_id === null}
                               >
                                 Unsorted
@@ -432,7 +432,7 @@ export function FolderDetailView({
                               {subfolders.map((f) => (
                                 <DropdownMenuItem
                                   key={f.id}
-                                  onSelect={() => onFileMove(r.id, f.id)}
+                                  onClick={() => onFileMove(r.id, f.id)}
                                   disabled={r.folder_id === f.id}
                                 >
                                   {f.name}
@@ -441,14 +441,14 @@ export function FolderDetailView({
                             </DropdownMenuSubContent>
                           </DropdownMenuSub>
                           <DropdownMenuItem
-                            onSelect={() => onFileReprocess(r.id)}
+                            onClick={() => onFileReprocess(r.id)}
                           >
                             <RefreshCw className="mr-2 h-4 w-4" /> Reprocess
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem
                             variant="destructive"
-                            onSelect={() => onFileDelete(r.id, r.filename)}
+                            onClick={() => onFileDelete(r.id, r.filename)}
                           >
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                           </DropdownMenuItem>

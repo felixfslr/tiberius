@@ -13,7 +13,13 @@ import {
 import { cloneAgentAction, deleteAgentAction } from "@/app/actions/agents";
 import { toast } from "sonner";
 
-export function AgentRowActions({ agentId, agentName }: { agentId: string; agentName: string }) {
+export function AgentRowActions({
+  agentId,
+  agentName,
+}: {
+  agentId: string;
+  agentName: string;
+}) {
   const [pending, startTransition] = useTransition();
 
   function onClone() {
@@ -29,7 +35,10 @@ export function AgentRowActions({ agentId, agentName }: { agentId: string; agent
   }
 
   function onDelete() {
-    if (!confirm(`Delete "${agentName}"? This removes all its files and chunks.`)) return;
+    if (
+      !confirm(`Delete "${agentName}"? This removes all its files and chunks.`)
+    )
+      return;
     startTransition(async () => {
       try {
         await deleteAgentAction(agentId);
@@ -50,11 +59,11 @@ export function AgentRowActions({ agentId, agentName }: { agentId: string; agent
         <span className="sr-only">Actions</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={onClone}>
+        <DropdownMenuItem onClick={onClone}>
           <Copy className="mr-2 h-4 w-4" /> Clone agent
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onDelete} variant="destructive">
+        <DropdownMenuItem onClick={onDelete} variant="destructive">
           <Trash2 className="mr-2 h-4 w-4" /> Delete
         </DropdownMenuItem>
       </DropdownMenuContent>

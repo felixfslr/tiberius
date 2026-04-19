@@ -221,7 +221,7 @@ export function FilesLiveTable({
                           Move to folder
                         </DropdownMenuLabel>
                         <DropdownMenuItem
-                          onSelect={() => onMove(r.id, null)}
+                          onClick={() => onMove(r.id, null)}
                           disabled={r.folder_id === null}
                         >
                           Unsorted
@@ -230,7 +230,7 @@ export function FilesLiveTable({
                         {folders.map((f) => (
                           <DropdownMenuItem
                             key={f.id}
-                            onSelect={() => onMove(r.id, f.id)}
+                            onClick={() => onMove(r.id, f.id)}
                             disabled={r.folder_id === f.id}
                           >
                             {f.name}
@@ -238,12 +238,12 @@ export function FilesLiveTable({
                         ))}
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
-                    <DropdownMenuItem onSelect={() => onReprocess(r.id)}>
+                    <DropdownMenuItem onClick={() => onReprocess(r.id)}>
                       <RefreshCw className="mr-2 h-4 w-4" /> Reprocess
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onSelect={() => onDelete(r.id, r.filename)}
+                      onClick={() => onDelete(r.id, r.filename)}
                       variant="destructive"
                     >
                       <Trash2 className="mr-2 h-4 w-4" /> Delete

@@ -201,7 +201,7 @@ export function FolderTable({
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem
-                      onSelect={() => {
+                      onClick={() => {
                         setEditName(f.name);
                         setEditingId(f.id);
                       }}
@@ -211,7 +211,7 @@ export function FolderTable({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
                       variant="destructive"
-                      onSelect={() => remove(f.id, f.name)}
+                      onClick={() => remove(f.id, f.name)}
                     >
                       <Trash2 className="mr-2 h-4 w-4" /> Delete
                     </DropdownMenuItem>
