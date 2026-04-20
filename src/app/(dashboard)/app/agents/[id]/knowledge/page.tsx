@@ -8,7 +8,6 @@ import {
   getFolderPath,
   listFolders,
 } from "@/lib/services/folders";
-import { buildRichGraph, type RichGraph } from "@/lib/services/graph-rich";
 import { createServiceClient } from "@/lib/supabase/service";
 import { buttonVariants } from "@/components/ui/button";
 import { CreateFolderDialog } from "@/components/app/create-folder-dialog";
@@ -35,32 +34,10 @@ export default async function KnowledgePage({
   // Root view
   // ========================================================
   if (!folder) {
-    const [rootFolders, counts, recent, graphData] = await Promise.all([
+    const [rootFolders, counts, recent] = await Promise.all([
       listFolders(id, null),
       getFolderCounts(id),
       listFiles(id).then((fs) => fs.slice(0, 6)),
-      buildRichGraph(id).catch((err): RichGraph => {
-        console.error("[knowledge] buildRichGraph failed", {
-          agent_id: id,
-          message: err instanceof Error ? err.message : String(err),
-        });
-        return {
-          agent_id: id,
-          nodes: [],
-          edges: [],
-          computed_at: new Date().toISOString(),
-          stats: {
-            chunk_count: 0,
-            edge_count: 0,
-            similarity_edges: 0,
-            co_retrieval_edges: 0,
-            unique_stages: [],
-            unique_intents: [],
-            top_entities: [],
-            content_type_counts: {},
-          },
-        };
-      }),
     ]);
     const subCounts = await countSubfolders(
       id,
@@ -112,7 +89,7 @@ export default async function KnowledgePage({
           <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
             Knowledge graph
           </h2>
-          <KnowledgeGraphEmbed data={graphData} agentName={agent.name} />
+          <KnowledgeGraphEmbed agentId={id} agentName={agent.name} />
         </section>
       </div>
     );
