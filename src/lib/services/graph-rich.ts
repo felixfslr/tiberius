@@ -51,35 +51,53 @@ export type RichGraph = {
 
 export async function buildRichGraph(
   agent_id: string,
-  opts: { topK?: number } = {},
+  opts: { topK?: number; maxNodes?: number } = {},
 ): Promise<RichGraph> {
   const sb = createServiceClient();
   const topK = opts.topK ?? 5;
+  const maxNodes = opts.maxNodes ?? 500;
 
-  const [chunksRes, filesRes, foldersRes, simRes, coRes, countsRes] =
-    await Promise.all([
-      sb
-        .from("chunks")
-        .select(
-          "id, file_id, content, content_type, metadata, position, edited_by_user",
-        )
-        .eq("agent_id", agent_id),
-      sb
-        .from("files")
-        .select("id, filename, folder_id")
-        .eq("agent_id", agent_id),
-      sb.from("folders").select("id, name").eq("agent_id", agent_id),
-      sb.rpc("graph_neighbors", { p_agent_id: agent_id, p_k: topK }),
-      sb.rpc("co_retrieval_edges", { p_agent_id: agent_id }),
-      sb.rpc("chunk_retrieval_counts", { p_agent_id: agent_id }),
-    ]);
+  // Edges first — they tell us which chunks actually appear in the graph.
+  // Fetching every chunk eagerly would pull megabytes of content for agents
+  // with thousands of chunks, most of which wouldn't be rendered.
+  const [simRes, coRes, countsRes, filesRes, foldersRes] = await Promise.all([
+    sb.rpc("graph_neighbors", {
+      p_agent_id: agent_id,
+      p_k: topK,
+      p_max_nodes: maxNodes,
+    }),
+    sb.rpc("co_retrieval_edges", { p_agent_id: agent_id }),
+    sb.rpc("chunk_retrieval_counts", { p_agent_id: agent_id }),
+    sb.from("files").select("id, filename, folder_id").eq("agent_id", agent_id),
+    sb.from("folders").select("id, name").eq("agent_id", agent_id),
+  ]);
 
-  if (chunksRes.error) throw new Error(chunksRes.error.message);
-  if (filesRes.error) throw new Error(filesRes.error.message);
-  if (foldersRes.error) throw new Error(foldersRes.error.message);
   if (simRes.error) throw new Error(simRes.error.message);
   if (coRes.error) throw new Error(coRes.error.message);
   if (countsRes.error) throw new Error(countsRes.error.message);
+  if (filesRes.error) throw new Error(filesRes.error.message);
+  if (foldersRes.error) throw new Error(foldersRes.error.message);
+
+  const chunkIds = new Set<string>();
+  for (const e of simRes.data ?? []) {
+    if (e.source_id) chunkIds.add(e.source_id);
+    if (e.target_id) chunkIds.add(e.target_id);
+  }
+  for (const e of coRes.data ?? []) {
+    if (e.a) chunkIds.add(e.a);
+    if (e.b) chunkIds.add(e.b);
+  }
+
+  const chunksRes =
+    chunkIds.size === 0
+      ? { data: [], error: null as { message: string } | null }
+      : await sb
+          .from("chunks")
+          .select(
+            "id, file_id, content, content_type, metadata, position, edited_by_user",
+          )
+          .in("id", [...chunkIds]);
+  if (chunksRes.error) throw new Error(chunksRes.error.message);
 
   const filesById = new Map<
     string,
